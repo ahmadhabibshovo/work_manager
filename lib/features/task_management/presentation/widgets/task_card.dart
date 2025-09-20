@@ -7,6 +7,7 @@ class TaskCard extends StatelessWidget {
   final Task task;
   final VoidCallback? onTap;
   final VoidCallback? onToggleComplete;
+  final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
   const TaskCard({
@@ -14,6 +15,7 @@ class TaskCard extends StatelessWidget {
     required this.task,
     this.onTap,
     this.onToggleComplete,
+    this.onEdit,
     this.onDelete,
   });
 
@@ -87,6 +89,17 @@ class TaskCard extends StatelessWidget {
                     ),
                   ],
                   const Spacer(),
+                  if (onEdit != null)
+                    IconButton(
+                      onPressed: onEdit,
+                      icon: Icon(
+                        Icons.edit_outlined,
+                        size: 20.sp,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
                   if (onDelete != null)
                     IconButton(
                       onPressed: onDelete,

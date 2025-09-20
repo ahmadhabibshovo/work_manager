@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../data/models/task.dart';
 import '../../data/models/priority.dart';
+import '../../../categories/data/models/category.dart';
 import 'priority_badge.dart';
+import 'category_selection_widget.dart';
 
 class TaskForm extends StatefulWidget {
   final Task? task;
+  final List<Category> availableCategories;
   final Function(Task) onSave;
 
   const TaskForm({
     super.key,
     this.task,
+    required this.availableCategories,
     required this.onSave,
   });
 
@@ -20,22 +24,22 @@ class TaskForm extends StatefulWidget {
 
 class _TaskFormState extends State<TaskForm> {
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  Priority _selectedPriority = Priority.medium;
-  DateTime? _selectedDueDate;
-  bool _isCompleted = false;
+  late TextEditingController _titleController;
+  late TextEditingController _descriptionController;
+  late Priority _selectedPriority;
+  late DateTime? _selectedDueDate;
+  late String? _selectedCategoryId;
+  late bool _isCompleted;
 
   @override
   void initState() {
     super.initState();
-    if (widget.task != null) {
-      _titleController.text = widget.task!.title;
-      _descriptionController.text = widget.task!.description ?? '';
-      _selectedPriority = widget.task!.priority;
-      _selectedDueDate = widget.task!.dueDate;
-      _isCompleted = widget.task!.isCompleted;
-    }
+    _titleController = TextEditingController(text: widget.task?.title ?? '');
+    _descriptionController = TextEditingController(text: widget.task?.description ?? '');
+    _selectedPriority = widget.task?.priority ?? Priority.medium;
+    _selectedDueDate = widget.task?.dueDate;
+    _isCompleted = widget.task?.isCompleted ?? false;
+    _selectedCategoryId = widget.task?.categoryId;
   }
 
   @override
@@ -117,6 +121,23 @@ class _TaskFormState extends State<TaskForm> {
                 ),
               );
             }).toList(),
+          ),
+          SizedBox(height: 16.h),
+          // Text(
+          //   'Category',
+          //   style: TextStyle(
+          //     fontSize: 16.sp,
+          //     fontWeight: FontWeight.w600,
+          //     color: Theme.of(context).colorScheme.onSurface,
+          //   ),
+          // ),
+          // SizedBox(height: 8.h),
+          CategorySelectionWidget(
+            availableCategories: widget.availableCategories,
+            selectedCategoryId: _selectedCategoryId,
+            onCategorySelected: (categoryId) {
+              setState(() => _selectedCategoryId = categoryId);
+            },
           ),
           SizedBox(height: 16.h),
           Row(
@@ -215,6 +236,7 @@ class _TaskFormState extends State<TaskForm> {
       priority: _selectedPriority,
       isCompleted: _isCompleted,
       dueDate: _selectedDueDate,
+      categoryId: _selectedCategoryId,
       createdAt: widget.task?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );

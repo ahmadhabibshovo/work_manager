@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../data/models/task.dart';
 import '../../data/models/priority.dart';
+import '../../../categories/data/models/category.dart';
 import '../widgets/task_card.dart';
-import '../widgets/task_form.dart';
+import 'create_task_screen.dart';
+import 'edit_task_screen.dart';
 
 class TaskListScreen extends StatefulWidget {
   const TaskListScreen({super.key});
@@ -22,6 +24,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
       priority: Priority.high,
       isCompleted: false,
       dueDate: DateTime.now().add(const Duration(days: 2)),
+      categoryId: '1', // Work category
       createdAt: DateTime.now().subtract(const Duration(days: 1)),
     ),
     Task(
@@ -31,6 +34,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
       priority: Priority.medium,
       isCompleted: true,
       dueDate: DateTime.now().subtract(const Duration(days: 1)),
+      categoryId: '1', // Work category
       createdAt: DateTime.now().subtract(const Duration(days: 3)),
     ),
     Task(
@@ -39,12 +43,60 @@ class _TaskListScreenState extends State<TaskListScreen> {
       description: 'Update all project dependencies to latest versions',
       priority: Priority.low,
       isCompleted: false,
+      categoryId: '1', // Work category
       createdAt: DateTime.now().subtract(const Duration(days: 5)),
+    ),
+    Task(
+      id: '4',
+      title: 'Morning workout',
+      description: '30 minutes cardio and strength training',
+      priority: Priority.medium,
+      isCompleted: false,
+      categoryId: '3', // Health category
+      createdAt: DateTime.now().subtract(const Duration(days: 2)),
+    ),
+    Task(
+      id: '5',
+      title: 'Grocery shopping',
+      description: 'Buy groceries for the week',
+      priority: Priority.low,
+      isCompleted: false,
+      categoryId: '2', // Personal category
+      createdAt: DateTime.now().subtract(const Duration(days: 1)),
     ),
   ];
 
   Priority _selectedFilter = Priority.medium;
   bool _showCompleted = true;
+  String? _selectedCategoryId; // null means "all categories"
+
+  // Available categories for filtering
+  final List<Category> _availableCategories = [
+    Category(
+      id: '1',
+      name: 'Work',
+      type: CategoryType.work,
+      createdAt: DateTime.now(),
+    ),
+    Category(
+      id: '2',
+      name: 'Personal',
+      type: CategoryType.personal,
+      createdAt: DateTime.now(),
+    ),
+    Category(
+      id: '3',
+      name: 'Health',
+      type: CategoryType.health,
+      createdAt: DateTime.now(),
+    ),
+    Category(
+      id: '4',
+      name: 'Education',
+      type: CategoryType.education,
+      createdAt: DateTime.now(),
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -54,22 +106,107 @@ class _TaskListScreenState extends State<TaskListScreen> {
       appBar: AppBar(
         title: const Text('Tasks'),
         actions: [
-          PopupMenuButton<Priority>(
-            onSelected: (priority) => setState(() => _selectedFilter = priority),
+          // Category filter
+          PopupMenuButton<String?>(
+            onSelected: (categoryId) => setState(() => _selectedCategoryId = categoryId),
             itemBuilder: (context) => [
-              PopupMenuItem(
-                value: Priority.medium, // Using medium as "all" filter
-                child: const Text('All Priorities'),
+              PopupMenuItem<String?>(
+                value: null,
+                child: const Text('All Categories'),
               ),
-              ...Priority.values.map((priority) => PopupMenuItem(
-                    value: priority,
-                    child: Text(priority.displayName),
+              ..._availableCategories.map((category) => PopupMenuItem<String?>(
+                    value: category.id,
+                    child: Row(
+                      children: [
+                        Icon(
+                          category.icon,
+                          size: 20.sp,
+                          color: category.color,
+                        ),
+                        SizedBox(width: 8.w),
+                        Text(category.name),
+                      ],
+                    ),
                   )),
             ],
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.w),
               child: Row(
                 children: [
+                  Icon(
+                    _selectedCategoryId != null
+                        ? _availableCategories
+                            .firstWhere((cat) => cat.id == _selectedCategoryId)
+                            .icon
+                        : Icons.category,
+                    size: 20.sp,
+                    color: _selectedCategoryId != null
+                        ? _availableCategories
+                            .firstWhere((cat) => cat.id == _selectedCategoryId)
+                            .color
+                        : Theme.of(context).colorScheme.onSurface,
+                  ),
+                  SizedBox(width: 4.w),
+                  Text(
+                    _selectedCategoryId != null
+                        ? _availableCategories
+                            .firstWhere((cat) => cat.id == _selectedCategoryId)
+                            .name
+                        : 'All',
+                    style: TextStyle(fontSize: 14.sp),
+                  ),
+                  Icon(Icons.arrow_drop_down, size: 20.sp),
+                ],
+              ),
+            ),
+          ),
+          // Priority filter
+          PopupMenuButton<Priority>(
+            onSelected: (priority) => setState(() => _selectedFilter = priority),
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: Priority.medium, // Using medium as "all" filter
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.list,
+                      size: 20.sp,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    SizedBox(width: 8.w),
+                    const Text('All Priorities'),
+                  ],
+                ),
+              ),
+              ...Priority.values.map((priority) => PopupMenuItem(
+                    value: priority,
+                    child: Row(
+                      children: [
+                        Icon(
+                          priority.icon,
+                          size: 20.sp,
+                          color: priority.color,
+                        ),
+                        SizedBox(width: 8.w),
+                        Text(priority.displayName),
+                      ],
+                    ),
+                  )),
+            ],
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w),
+              child: Row(
+                children: [
+                  Icon(
+                    _selectedFilter == Priority.medium
+                        ? Icons.list
+                        : _selectedFilter.icon,
+                    size: 20.sp,
+                    color: _selectedFilter == Priority.medium
+                        ? Theme.of(context).colorScheme.onSurface
+                        : _selectedFilter.color,
+                  ),
+                  SizedBox(width: 4.w),
                   Text(
                     _selectedFilter == Priority.medium
                         ? 'All'
@@ -117,6 +254,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
                         task: task,
                         onTap: () => _editTask(task),
                         onToggleComplete: () => _toggleTaskComplete(task),
+                        onEdit: () => _editTask(task),
                         onDelete: () => _deleteTask(task),
                       );
                     },
@@ -133,6 +271,11 @@ class _TaskListScreenState extends State<TaskListScreen> {
 
   List<Task> _getFilteredTasks() {
     var tasks = _tasks;
+
+    // Filter by category
+    if (_selectedCategoryId != null) {
+      tasks = tasks.where((task) => task.categoryId == _selectedCategoryId).toList();
+    }
 
     // Filter by priority
     if (_selectedFilter != Priority.medium) { // medium represents "all"
@@ -190,12 +333,35 @@ class _TaskListScreenState extends State<TaskListScreen> {
     );
   }
 
-  void _addNewTask() {
-    _showTaskDialog();
+  void _addNewTask() async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const CreateTaskScreen(),
+      ),
+    );
+
+    if (result != null && result is Task) {
+      setState(() {
+        _tasks.add(result);
+      });
+    }
   }
 
-  void _editTask(Task task) {
-    _showTaskDialog(task: task);
+  void _editTask(Task task) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EditTaskScreen(task: task),
+      ),
+    );
+
+    if (result != null && result is Task) {
+      setState(() {
+        final index = _tasks.indexWhere((t) => t.id == task.id);
+        if (index != -1) {
+          _tasks[index] = result;
+        }
+      });
+    }
   }
 
   void _toggleTaskComplete(Task task) {
@@ -234,69 +400,6 @@ class _TaskListScreenState extends State<TaskListScreen> {
             child: const Text('Delete'),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showTaskDialog({Task? task}) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.8,
-        minChildSize: 0.5,
-        maxChildSize: 0.9,
-        builder: (context, scrollController) => Container(
-          padding: EdgeInsets.all(16.r),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Text(
-                    task != null ? 'Edit Task' : 'New Task',
-                    style: TextStyle(
-                      fontSize: 20.sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16.h),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: scrollController,
-                  child: TaskForm(
-                    task: task,
-                    onSave: (savedTask) {
-                      setState(() {
-                        if (task != null) {
-                          // Update existing task
-                          final index = _tasks.indexWhere((t) => t.id == task.id);
-                          if (index != -1) {
-                            _tasks[index] = savedTask;
-                          }
-                        } else {
-                          // Add new task
-                          _tasks.add(savedTask);
-                        }
-                      });
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

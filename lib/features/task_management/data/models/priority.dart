@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 enum Priority {
   low,
   medium,
@@ -11,6 +13,28 @@ enum Priority {
         return 'Medium';
       case Priority.high:
         return 'High';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case Priority.low:
+        return Icons.arrow_downward;
+      case Priority.medium:
+        return Icons.remove;
+      case Priority.high:
+        return Icons.arrow_upward;
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case Priority.low:
+        return const Color(0xFF10B981); // Green
+      case Priority.medium:
+        return const Color(0xFFF59E0B); // Orange
+      case Priority.high:
+        return const Color(0xFFEF4444); // Red
     }
   }
 
