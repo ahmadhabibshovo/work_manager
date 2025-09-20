@@ -1,0 +1,362 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../data/models/user_preferences.dart';
+import '../widgets/settings_tile.dart';
+
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  // Mock preferences for now - will be replaced with actual service
+  UserPreferences _preferences = const UserPreferences();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings'),
+        actions: [
+          TextButton(
+            onPressed: _resetToDefaults,
+            child: Text(
+              'Reset',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontSize: 14.sp,
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: ListView(
+        children: [
+          SettingsSection(
+            title: 'APPEARANCE',
+            children: [
+              SettingsTile(
+                title: 'Theme',
+                subtitle: _preferences.themeMode.displayName,
+                leading: Icon(
+                  _preferences.themeMode == AppThemeMode.dark
+                      ? Icons.dark_mode
+                      : _preferences.themeMode == AppThemeMode.light
+                          ? Icons.light_mode
+                          : Icons.brightness_auto,
+                  size: 20.sp,
+                ),
+                onTap: _showThemeDialog,
+              ),
+              SettingsTile(
+                title: 'Language',
+                subtitle: _preferences.language.displayName,
+                leading: Icon(
+                  Icons.language,
+                  size: 20.sp,
+                ),
+                onTap: _showLanguageDialog,
+              ),
+            ],
+          ),
+
+          SettingsSection(
+            title: 'NOTIFICATIONS',
+            children: [
+              SettingsSwitchTile(
+                title: 'Enable Notifications',
+                subtitle: 'Receive reminders for tasks',
+                leading: Icon(
+                  Icons.notifications,
+                  size: 20.sp,
+                ),
+                value: _preferences.enableNotifications,
+                onChanged: (value) => _updatePreferences(
+                  _preferences.copyWith(enableNotifications: value),
+                ),
+              ),
+              if (_preferences.enableNotifications) ...[
+                SettingsSwitchTile(
+                  title: 'Sound',
+                  subtitle: 'Play sound for notifications',
+                  leading: Icon(
+                    Icons.volume_up,
+                    size: 20.sp,
+                  ),
+                  value: _preferences.enableSound,
+                  onChanged: (value) => _updatePreferences(
+                    _preferences.copyWith(enableSound: value),
+                  ),
+                ),
+                SettingsSwitchTile(
+                  title: 'Vibration',
+                  subtitle: 'Vibrate for notifications',
+                  leading: Icon(
+                    Icons.vibration,
+                    size: 20.sp,
+                  ),
+                  value: _preferences.enableVibration,
+                  onChanged: (value) => _updatePreferences(
+                    _preferences.copyWith(enableVibration: value),
+                  ),
+                ),
+              ],
+            ],
+          ),
+
+          SettingsSection(
+            title: 'TASKS',
+            children: [
+              SettingsSwitchTile(
+                title: 'Show Completed Tasks',
+                subtitle: 'Display completed tasks in the list',
+                leading: Icon(
+                  Icons.check_circle,
+                  size: 20.sp,
+                ),
+                value: _preferences.showCompletedTasks,
+                onChanged: (value) => _updatePreferences(
+                  _preferences.copyWith(showCompletedTasks: value),
+                ),
+              ),
+              SettingsTile(
+                title: 'Default Priority',
+                subtitle: _getPriorityDisplayName(_preferences.defaultTaskPriority),
+                leading: Icon(
+                  Icons.priority_high,
+                  size: 20.sp,
+                ),
+                onTap: _showPriorityDialog,
+              ),
+            ],
+          ),
+
+          SettingsSection(
+            title: 'DATA MANAGEMENT',
+            children: [
+              SettingsSwitchTile(
+                title: 'Auto-delete Completed Tasks',
+                subtitle: 'Automatically delete completed tasks after a period',
+                leading: Icon(
+                  Icons.auto_delete,
+                  size: 20.sp,
+                ),
+                value: _preferences.autoDeleteCompletedTasks,
+                onChanged: (value) => _updatePreferences(
+                  _preferences.copyWith(autoDeleteCompletedTasks: value),
+                ),
+              ),
+              if (_preferences.autoDeleteCompletedTasks)
+                SettingsTile(
+                  title: 'Delete After',
+                  subtitle: '${_preferences.autoDeleteAfterDays} days',
+                  leading: Icon(
+                    Icons.schedule,
+                    size: 20.sp,
+                  ),
+                  onTap: _showDeleteAfterDialog,
+                ),
+            ],
+          ),
+
+          SettingsSection(
+            title: 'ABOUT',
+            children: [
+              SettingsTile(
+                title: 'Version',
+                subtitle: '1.0.0',
+                leading: Icon(
+                  Icons.info,
+                  size: 20.sp,
+                ),
+              ),
+              SettingsTile(
+                title: 'Privacy Policy',
+                leading: Icon(
+                  Icons.privacy_tip,
+                  size: 20.sp,
+                ),
+                onTap: _showPrivacyPolicy,
+              ),
+              SettingsTile(
+                title: 'Terms of Service',
+                leading: Icon(
+                  Icons.description,
+                  size: 20.sp,
+                ),
+                onTap: _showTermsOfService,
+              ),
+            ],
+          ),
+
+          SizedBox(height: 32.h),
+        ],
+      ),
+    );
+  }
+
+  void _updatePreferences(UserPreferences newPreferences) {
+    setState(() {
+      _preferences = newPreferences;
+    });
+    // TODO: Save to persistent storage
+  }
+
+  void _showThemeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Choose Theme'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: AppThemeMode.values.map((themeMode) {
+            return RadioListTile<AppThemeMode>(
+              title: Text(themeMode.displayName),
+              value: themeMode,
+              groupValue: _preferences.themeMode,
+              onChanged: (value) {
+                if (value != null) {
+                  _updatePreferences(_preferences.copyWith(themeMode: value));
+                  Navigator.of(context).pop();
+                }
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showLanguageDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Choose Language'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: Language.values.map((language) {
+              return RadioListTile<Language>(
+                title: Text(language.displayName),
+                value: language,
+                groupValue: _preferences.language,
+                onChanged: (value) {
+                  if (value != null) {
+                    _updatePreferences(_preferences.copyWith(language: value));
+                    Navigator.of(context).pop();
+                  }
+                },
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showPriorityDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Default Priority'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [1, 2, 3].map((priority) {
+            return RadioListTile<int>(
+              title: Text(_getPriorityDisplayName(priority)),
+              value: priority,
+              groupValue: _preferences.defaultTaskPriority,
+              onChanged: (value) {
+                if (value != null) {
+                  _updatePreferences(_preferences.copyWith(defaultTaskPriority: value));
+                  Navigator.of(context).pop();
+                }
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteAfterDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete After'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [7, 14, 30, 60, 90].map((days) {
+            return RadioListTile<int>(
+              title: Text('$days days'),
+              value: days,
+              groupValue: _preferences.autoDeleteAfterDays,
+              onChanged: (value) {
+                if (value != null) {
+                  _updatePreferences(_preferences.copyWith(autoDeleteAfterDays: value));
+                  Navigator.of(context).pop();
+                }
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _resetToDefaults() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Settings'),
+        content: const Text('Are you sure you want to reset all settings to their default values?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              _updatePreferences(const UserPreferences());
+              Navigator.of(context).pop();
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacyPolicy() {
+    // TODO: Navigate to privacy policy screen
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Privacy Policy - Coming Soon')),
+    );
+  }
+
+  void _showTermsOfService() {
+    // TODO: Navigate to terms of service screen
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Terms of Service - Coming Soon')),
+    );
+  }
+
+  String _getPriorityDisplayName(int priority) {
+    switch (priority) {
+      case 1:
+        return 'Low';
+      case 2:
+        return 'Medium';
+      case 3:
+        return 'High';
+      default:
+        return 'Medium';
+    }
+  }
+}
