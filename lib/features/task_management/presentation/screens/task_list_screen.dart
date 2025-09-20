@@ -68,7 +68,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
 
   Priority _selectedFilter = Priority.medium;
   bool _showCompleted = true;
-  String? _selectedCategoryId; // null means "all categories"
+  String _selectedCategoryId = 'all'; // 'all' means "all categories"
 
   // Available categories for filtering
   final List<Category> _availableCategories = [
@@ -107,14 +107,24 @@ class _TaskListScreenState extends State<TaskListScreen> {
         title: const Text('Tasks'),
         actions: [
           // Category filter
-          PopupMenuButton<String?>(
+          PopupMenuButton<String>(
             onSelected: (categoryId) => setState(() => _selectedCategoryId = categoryId),
             itemBuilder: (context) => [
-              PopupMenuItem<String?>(
-                value: null,
-                child: const Text('All Categories'),
+              PopupMenuItem<String>(
+                value: 'all',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.category,
+                      size: 20.sp,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    SizedBox(width: 8.w),
+                    const Text('All Categories'),
+                  ],
+                ),
               ),
-              ..._availableCategories.map((category) => PopupMenuItem<String?>(
+              ..._availableCategories.map((category) => PopupMenuItem<String>(
                     value: category.id,
                     child: Row(
                       children: [
@@ -134,25 +144,34 @@ class _TaskListScreenState extends State<TaskListScreen> {
               child: Row(
                 children: [
                   Icon(
-                    _selectedCategoryId != null
-                        ? _availableCategories
-                            .firstWhere((cat) => cat.id == _selectedCategoryId)
-                            .icon
-                        : Icons.category,
+                    _selectedCategoryId == 'all'
+                        ? Icons.category
+                        : _availableCategories
+                            .firstWhere(
+                              (cat) => cat.id == _selectedCategoryId,
+                              orElse: () => _availableCategories.first,
+                            )
+                            .icon,
                     size: 20.sp,
-                    color: _selectedCategoryId != null
-                        ? _availableCategories
-                            .firstWhere((cat) => cat.id == _selectedCategoryId)
-                            .color
-                        : Theme.of(context).colorScheme.onSurface,
+                    color: _selectedCategoryId == 'all'
+                        ? Theme.of(context).colorScheme.onSurface
+                        : _availableCategories
+                            .firstWhere(
+                              (cat) => cat.id == _selectedCategoryId,
+                              orElse: () => _availableCategories.first,
+                            )
+                            .color,
                   ),
                   SizedBox(width: 4.w),
                   Text(
-                    _selectedCategoryId != null
-                        ? _availableCategories
-                            .firstWhere((cat) => cat.id == _selectedCategoryId)
-                            .name
-                        : 'All',
+                    _selectedCategoryId == 'all'
+                        ? 'All'
+                        : _availableCategories
+                            .firstWhere(
+                              (cat) => cat.id == _selectedCategoryId,
+                              orElse: () => _availableCategories.first,
+                            )
+                            .name,
                     style: TextStyle(fontSize: 14.sp),
                   ),
                   Icon(Icons.arrow_drop_down, size: 20.sp),
@@ -273,7 +292,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
     var tasks = _tasks;
 
     // Filter by category
-    if (_selectedCategoryId != null) {
+    if (_selectedCategoryId != 'all') {
       tasks = tasks.where((task) => task.categoryId == _selectedCategoryId).toList();
     }
 
