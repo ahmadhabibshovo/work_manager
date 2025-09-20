@@ -4,7 +4,6 @@ import '../../data/models/task.dart';
 import '../../data/models/priority.dart';
 import '../../../categories/data/models/category.dart';
 import '../widgets/task_card.dart';
-import 'create_task_screen.dart';
 import 'edit_task_screen.dart';
 
 class TaskListScreen extends StatefulWidget {
@@ -281,10 +280,6 @@ class _TaskListScreenState extends State<TaskListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addNewTask,
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
@@ -350,20 +345,6 @@ class _TaskListScreenState extends State<TaskListScreen> {
         ],
       ),
     );
-  }
-
-  void _addNewTask() async {
-    final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const CreateTaskScreen(),
-      ),
-    );
-
-    if (result != null && result is Task) {
-      setState(() {
-        _tasks.add(result);
-      });
-    }
   }
 
   void _editTask(Task task) async {

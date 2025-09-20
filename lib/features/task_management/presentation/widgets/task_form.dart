@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../data/models/task.dart';
 import '../../data/models/priority.dart';
+import '../../data/models/task_attachment.dart';
 import '../../../categories/data/models/category.dart';
 import 'priority_badge.dart';
 import 'category_selection_widget.dart';
@@ -26,26 +28,32 @@ class _TaskFormState extends State<TaskForm> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
+  late TextEditingController _urlController;
   late Priority _selectedPriority;
   late DateTime? _selectedDueDate;
   late String? _selectedCategoryId;
   late bool _isCompleted;
+  late List<TaskAttachment> _attachments;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.task?.title ?? '');
     _descriptionController = TextEditingController(text: widget.task?.description ?? '');
+    _urlController = TextEditingController();
     _selectedPriority = widget.task?.priority ?? Priority.medium;
     _selectedDueDate = widget.task?.dueDate;
     _isCompleted = widget.task?.isCompleted ?? false;
     _selectedCategoryId = widget.task?.categoryId;
+    _attachments = List.from(widget.task?.attachments ?? []);
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _urlController.dispose();
     super.dispose();
   }
 
@@ -140,6 +148,95 @@ class _TaskFormState extends State<TaskForm> {
             },
           ),
           SizedBox(height: 16.h),
+          Text(
+            'Attachments',
+            style: TextStyle(
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          SizedBox(height: 8.h),
+          // URL input section
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _urlController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter URL...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+                  ),
+                  onSubmitted: (_) => _addUrlAttachment(),
+                ),
+              ),
+              SizedBox(width: 8.w),
+              IconButton(
+                onPressed: _addUrlAttachment,
+                icon: Icon(Icons.add_link),
+                style: IconButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8.h),
+          // Image picker button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _addImageAttachment,
+              icon: Icon(Icons.image),
+              label: Text('Add Image'),
+              style: OutlinedButton.styleFrom(
+                padding: EdgeInsets.symmetric(vertical: 12.h),
+              ),
+            ),
+          ),
+          SizedBox(height: 8.h),
+          // Attachments list
+          if (_attachments.isNotEmpty) ...[
+            Container(
+              constraints: BoxConstraints(maxHeight: 150.h),
+              decoration: BoxDecoration(
+                border: Border.all(color: Theme.of(context).colorScheme.outline),
+                borderRadius: BorderRadius.circular(8.r),
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _attachments.length,
+                itemBuilder: (context, index) {
+                  final attachment = _attachments[index];
+                  return ListTile(
+                    dense: true,
+                    visualDensity: VisualDensity.compact,
+                    leading: Icon(
+                      attachment.type.icon,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20.sp,
+                    ),
+                    title: Text(
+                      attachment.displayName ?? attachment.url,
+                      style: TextStyle(fontSize: 12.sp),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: IconButton(
+                      icon: Icon(Icons.close, size: 16.sp),
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(minWidth: 24.w, minHeight: 24.h),
+                      onPressed: () => _removeAttachment(attachment),
+                    ),
+                  );
+                },
+              ),
+            ),
+            SizedBox(height: 16.h),
+          ],
           Row(
             children: [
               Expanded(
@@ -224,6 +321,74 @@ class _TaskFormState extends State<TaskForm> {
     }
   }
 
+  void _addUrlAttachment() {
+    final url = _urlController.text.trim();
+    if (url.isNotEmpty) {
+      final attachment = TaskAttachment(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        type: AttachmentType.url,
+        url: url,
+        displayName: _extractUrlDisplayName(url),
+        createdAt: DateTime.now(),
+      );
+      setState(() {
+        _attachments.add(attachment);
+        _urlController.clear();
+      });
+    }
+  }
+
+  Future<void> _addImageAttachment() async {
+    try {
+      final pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        final attachment = TaskAttachment(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          type: AttachmentType.image,
+          url: pickedFile.path,
+          displayName: pickedFile.name,
+          createdAt: DateTime.now(),
+        );
+        setState(() {
+          _attachments.add(attachment);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick image: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _removeAttachment(TaskAttachment attachment) {
+    setState(() {
+      _attachments.remove(attachment);
+    });
+  }
+
+  String _extractUrlDisplayName(String url) {
+    try {
+      final uri = Uri.parse(url);
+      if (uri.host.isNotEmpty) {
+        return uri.host;
+      }
+    } catch (e) {
+      // If URL parsing fails, return the URL as is
+    }
+    return url;
+  }
+
   void _saveTask() {
     if (!_formKey.currentState!.validate()) return;
 
@@ -237,6 +402,7 @@ class _TaskFormState extends State<TaskForm> {
       isCompleted: _isCompleted,
       dueDate: _selectedDueDate,
       categoryId: _selectedCategoryId,
+      attachments: _attachments,
       createdAt: widget.task?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );

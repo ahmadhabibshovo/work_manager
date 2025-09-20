@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'priority.dart';
+import 'task_attachment.dart';
 
 class Task {
   final String id;
@@ -10,6 +12,7 @@ class Task {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final String? categoryId;
+  final List<TaskAttachment> attachments;
 
   const Task({
     required this.id,
@@ -21,6 +24,7 @@ class Task {
     required this.createdAt,
     this.updatedAt,
     this.categoryId,
+    this.attachments = const [],
   });
 
   Task copyWith({
@@ -33,6 +37,7 @@ class Task {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? categoryId,
+    List<TaskAttachment>? attachments,
   }) {
     return Task(
       id: id ?? this.id,
@@ -44,6 +49,7 @@ class Task {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       categoryId: categoryId ?? this.categoryId,
+      attachments: attachments ?? this.attachments,
     );
   }
 
@@ -58,6 +64,7 @@ class Task {
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
       'categoryId': categoryId,
+      'attachments': attachments.map((attachment) => attachment.toJson()).toList(),
     };
   }
 
@@ -76,6 +83,11 @@ class Task {
           ? DateTime.parse(json['updatedAt'] as String)
           : null,
       categoryId: json['categoryId'] as String?,
+      attachments: json['attachments'] != null
+          ? (json['attachments'] as List<dynamic>)
+              .map((attachmentJson) => TaskAttachment.fromJson(attachmentJson as Map<String, dynamic>))
+              .toList()
+          : [],
     );
   }
 
@@ -97,7 +109,8 @@ class Task {
         other.dueDate == dueDate &&
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt &&
-        other.categoryId == categoryId;
+        other.categoryId == categoryId &&
+        listEquals(other.attachments, attachments);
   }
 
   @override
@@ -110,6 +123,7 @@ class Task {
         dueDate.hashCode ^
         createdAt.hashCode ^
         updatedAt.hashCode ^
-        categoryId.hashCode;
+        categoryId.hashCode ^
+        attachments.hashCode;
   }
 }
