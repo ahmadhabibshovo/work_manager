@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Priority Manager</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="main.dart.js" type="application/javascript"></script>
+</head>
+<body>
+    <script>
+        // This script is necessary for Flutter web apps to work correctly
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            // If the app is running in standalone mode, hide the address bar
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'visible') {
+                    window.scrollTo(0, 1);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
