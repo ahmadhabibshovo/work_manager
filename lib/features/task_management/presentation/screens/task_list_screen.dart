@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../data/models/task.dart';
 import '../../data/models/priority.dart';
 import '../../../categories/data/models/category.dart';
+import '../../../categories/data/repositories/category_repository.dart';
 import '../../../../core/services/service_locator.dart';
 import '../widgets/task_card.dart';
 import 'edit_task_screen.dart';
@@ -23,39 +24,41 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
   bool _showCompleted = true;
   String _selectedCategoryId = 'all'; // 'all' means "all categories"
 
-  // Available categories for filtering
-  final List<Category> _availableCategories = [
-    Category(
-      id: '1',
-      name: 'Work',
-      type: CategoryType.work,
-      createdAt: DateTime.now(),
-    ),
-    Category(
-      id: '2',
-      name: 'Personal',
-      type: CategoryType.personal,
-      createdAt: DateTime.now(),
-    ),
-    Category(
-      id: '3',
-      name: 'Health',
-      type: CategoryType.health,
-      createdAt: DateTime.now(),
-    ),
-    Category(
-      id: '4',
-      name: 'Education',
-      type: CategoryType.education,
-      createdAt: DateTime.now(),
-    ),
-  ];
+  // Dynamic categories loaded from database
+  List<Category> _availableCategories = [];
+  bool _isLoadingCategories = true;
+  late CategoryRepository _categoryRepository;
 
   @override
   void initState() {
     super.initState();
-    _loadTasks();
+    _initializeData();
     WidgetsBinding.instance.addObserver(this);
+  }
+
+  Future<void> _initializeData() async {
+    await _loadCategories();
+    _loadTasks();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      _categoryRepository = await ServiceLocator.getCategoryRepository();
+      final categories = await _categoryRepository.getAllCategories();
+      if (mounted) {
+        setState(() {
+          _availableCategories = categories;
+          _isLoadingCategories = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading categories: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingCategories = false;
+        });
+      }
+    }
   }
 
   @override
@@ -67,9 +70,14 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Refresh tasks when app comes back into focus
-      _refreshTasks();
+      // Refresh both tasks and categories when app comes back into focus
+      _refreshData();
     }
+  }
+
+  void _refreshData() {
+    _loadCategories();
+    _refreshTasks();
   }
 
   void _loadTasks() {
@@ -84,7 +92,7 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
 
   // Public method to refresh tasks from outside
   void refreshTasks() {
-    _refreshTasks();
+    _refreshData();
   }
 
   @override
@@ -111,52 +119,89 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
                   ],
                 ),
               ),
-              ..._availableCategories.map((category) => PopupMenuItem<String>(
-                    value: category.id,
-                    child: Row(
-                      children: [
-                        Icon(
-                          category.icon,
-                          size: 20.sp,
-                          color: category.color,
+              if (_isLoadingCategories)
+                PopupMenuItem<String>(
+                  value: null,
+                  enabled: false,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 20.sp,
+                        height: 20.sp,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Theme.of(context).colorScheme.primary,
+                          ),
                         ),
-                        SizedBox(width: 8.w),
-                        Text(category.name),
-                      ],
-                    ),
-                  )),
+                      ),
+                      SizedBox(width: 8.w),
+                      const Text('Loading categories...'),
+                    ],
+                  ),
+                )
+              else
+                ..._availableCategories.map((category) => PopupMenuItem<String>(
+                      value: category.id,
+                      child: Row(
+                        children: [
+                          Icon(
+                            category.icon,
+                            size: 20.sp,
+                            color: category.color,
+                          ),
+                          SizedBox(width: 8.w),
+                          Text(category.name),
+                        ],
+                      ),
+                    )),
             ],
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.w),
               child: Row(
                 children: [
                   Icon(
-                    _selectedCategoryId == 'all'
+                    _selectedCategoryId == 'all' || _isLoadingCategories || _availableCategories.isEmpty
                         ? Icons.category
                         : _availableCategories
                             .firstWhere(
                               (cat) => cat.id == _selectedCategoryId,
-                              orElse: () => _availableCategories.first,
+                              orElse: () => _availableCategories.isNotEmpty ? _availableCategories.first : Category(
+                                id: 'all',
+                                name: 'All Categories',
+                                type: CategoryType.other,
+                                createdAt: DateTime.now(),
+                              ),
                             )
                             .icon,
                     size: 20.sp,
-                    color: _selectedCategoryId == 'all'
+                    color: _selectedCategoryId == 'all' || _isLoadingCategories || _availableCategories.isEmpty
                         ? Theme.of(context).colorScheme.onSurface
                         : _availableCategories
                             .firstWhere(
                               (cat) => cat.id == _selectedCategoryId,
-                              orElse: () => _availableCategories.first,
+                              orElse: () => _availableCategories.isNotEmpty ? _availableCategories.first : Category(
+                                id: 'all',
+                                name: 'All Categories',
+                                type: CategoryType.other,
+                                createdAt: DateTime.now(),
+                              ),
                             )
                             .color,
                   ),
                   SizedBox(width: 4.w),
                   Text(
-                    _selectedCategoryId == 'all'
+                    _selectedCategoryId == 'all' || _isLoadingCategories || _availableCategories.isEmpty
                         ? 'All'
                         : _availableCategories
                             .firstWhere(
                               (cat) => cat.id == _selectedCategoryId,
-                              orElse: () => _availableCategories.first,
+                              orElse: () => _availableCategories.isNotEmpty ? _availableCategories.first : Category(
+                                id: 'all',
+                                name: 'All Categories',
+                                type: CategoryType.other,
+                                createdAt: DateTime.now(),
+                              ),
                             )
                             .name,
                     style: TextStyle(fontSize: 14.sp),
