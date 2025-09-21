@@ -20,7 +20,7 @@ class TaskListScreen extends StatefulWidget {
 
 class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObserver {
   Future<List<Task>>? _tasksFuture;
-  Priority _selectedFilter = Priority.medium;
+  String _selectedFilter = 'all'; // 'all' means "all priorities"
   bool _showCompleted = true;
   String _selectedCategoryId = 'all'; // 'all' means "all categories"
 
@@ -212,11 +212,11 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
             ),
           ),
           // Priority filter
-          PopupMenuButton<Priority>(
-            onSelected: (priority) => setState(() => _selectedFilter = priority),
+          PopupMenuButton<String>(
+            onSelected: (filter) => setState(() => _selectedFilter = filter),
             itemBuilder: (context) => [
-              PopupMenuItem(
-                value: Priority.medium, // Using medium as "all" filter
+              PopupMenuItem<String>(
+                value: 'all', // 'all' means "all priorities"
                 child: Row(
                   children: [
                     Icon(
@@ -229,8 +229,8 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
                   ],
                 ),
               ),
-              ...Priority.values.map((priority) => PopupMenuItem(
-                    value: priority,
+              ...Priority.values.map((priority) => PopupMenuItem<String>(
+                    value: priority.name,
                     child: Row(
                       children: [
                         Icon(
@@ -249,19 +249,19 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
               child: Row(
                 children: [
                   Icon(
-                    _selectedFilter == Priority.medium
+                    _selectedFilter == 'all'
                         ? Icons.list
-                        : _selectedFilter.icon,
+                        : _getPriorityFromName(_selectedFilter).icon,
                     size: 20.sp,
-                    color: _selectedFilter == Priority.medium
+                    color: _selectedFilter == 'all'
                         ? Theme.of(context).colorScheme.onSurface
-                        : _selectedFilter.color,
+                        : _getPriorityFromName(_selectedFilter).color,
                   ),
                   SizedBox(width: 4.w),
                   Text(
-                    _selectedFilter == Priority.medium
+                    _selectedFilter == 'all'
                         ? 'All'
-                        : _selectedFilter.displayName,
+                        : _getPriorityFromName(_selectedFilter).displayName,
                     style: TextStyle(fontSize: 14.sp),
                   ),
                   Icon(Icons.arrow_drop_down, size: 20.sp),
@@ -426,8 +426,9 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
     }
 
     // Filter by priority
-    if (_selectedFilter != Priority.medium) { // medium represents "all"
-      filteredTasks = filteredTasks.where((task) => task.priority == _selectedFilter).toList();
+    if (_selectedFilter != 'all') {
+      final selectedPriority = _getPriorityFromName(_selectedFilter);
+      filteredTasks = filteredTasks.where((task) => task.priority == selectedPriority).toList();
     }
 
     // Filter by completion status
@@ -634,5 +635,12 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
         }
       }
     }
+  }
+
+  Priority _getPriorityFromName(String name) {
+    return Priority.values.firstWhere(
+      (priority) => priority.name == name,
+      orElse: () => Priority.low, // fallback
+    );
   }
 }
