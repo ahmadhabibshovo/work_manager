@@ -1,5 +1,6 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'sync_service.dart';
 import '../../features/categories/data/models/category.dart';
 import '../../features/categories/data/repositories/category_repository.dart';
 import '../../features/task_management/data/models/priority.dart';
@@ -12,6 +13,7 @@ class ServiceLocator {
   static CategoryRepository? _categoryRepository;
   static TaskRepository? _taskRepository;
   static PreferencesService? _preferencesService;
+  static SyncService? _syncService;
 
   static Future<void> initialize() async {
     await Hive.initFlutter();
@@ -22,10 +24,13 @@ class ServiceLocator {
     Hive.registerAdapter(TaskAttachmentAdapter());
     Hive.registerAdapter(TaskAdapter());
 
-    _categoryRepository = CategoryRepositoryImpl();
+    _syncService = SyncService();
+    await _syncService!.initialize();
+
+    _categoryRepository = CategoryRepositoryImpl(_syncService!);
     await _categoryRepository!.initialize();
 
-    _taskRepository = TaskRepositoryImpl();
+    _taskRepository = TaskRepositoryImpl(_syncService!);
     await _taskRepository!.initialize();
 
     final prefs = await SharedPreferences.getInstance();

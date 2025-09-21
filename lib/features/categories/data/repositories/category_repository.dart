@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import '../../../../core/services/sync_service.dart';
 import '../models/category.dart';
 
 abstract class CategoryRepository {
@@ -14,6 +15,9 @@ abstract class CategoryRepository {
 class CategoryRepositoryImpl implements CategoryRepository {
   static const String _boxName = 'categories';
   late Box<Category> _box;
+  final SyncService _syncService;
+
+  CategoryRepositoryImpl(this._syncService);
 
   @override
   Future<void> initialize() async {
@@ -43,6 +47,15 @@ class CategoryRepositoryImpl implements CategoryRepository {
   @override
   Future<Category> createCategory(Category category) async {
     await _box.put(category.id, category);
+    // Sync if online
+    if (_syncService.isOnline) {
+      try {
+        await _syncService.manualSync();
+      } catch (e) {
+        // Sync failed, but don't fail the operation
+        print('Sync failed after creating category: $e');
+      }
+    }
     return category;
   }
 
@@ -50,12 +63,30 @@ class CategoryRepositoryImpl implements CategoryRepository {
   Future<Category> updateCategory(Category category) async {
     final updatedCategory = category.copyWith(updatedAt: DateTime.now());
     await _box.put(category.id, updatedCategory);
+    // Sync if online
+    if (_syncService.isOnline) {
+      try {
+        await _syncService.manualSync();
+      } catch (e) {
+        // Sync failed, but don't fail the operation
+        print('Sync failed after updating category: $e');
+      }
+    }
     return updatedCategory;
   }
 
   @override
   Future<void> deleteCategory(String id) async {
     await _box.delete(id);
+    // Sync if online
+    if (_syncService.isOnline) {
+      try {
+        await _syncService.manualSync();
+      } catch (e) {
+        // Sync failed, but don't fail the operation
+        print('Sync failed after deleting category: $e');
+      }
+    }
   }
 
   @override

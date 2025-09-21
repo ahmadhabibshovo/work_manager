@@ -28,6 +28,20 @@ ScreenUtilInit(
 )
 ```
 
+### Firebase Integration (Offline-First)
+- **Backend**: Firebase (Firestore for data sync, Firebase Auth optional)
+- **Offline Strategy**: App works fully offline with Hive local storage; syncs to Firebase when internet available
+- **Sync Behavior**: Automatic sync on app launch/connectivity; manual sync option in settings
+- **Dependencies**: Add to `pubspec.yaml`:
+  ```yaml
+  firebase_core: ^2.24.2
+  cloud_firestore: ^4.14.0
+  firebase_auth: ^4.16.0  # Optional for user accounts
+  connectivity_plus: ^5.0.2  # For network detection
+  ```
+- **Initialization**: Initialize Firebase in `lib/main.dart` after Hive setup
+- **Repository Pattern**: Update repositories to handle both local (Hive) and remote (Firestore) data with sync logic
+
 ## Development Workflows
 
 ### Essential Commands
@@ -187,15 +201,16 @@ void _updateState() {
 
 ## Key Reference Files
 - `lib/main.dart` - ScreenUtilInit setup and app structure
-- `pubspec.yaml` - Dependencies (flutter_screenutil, cupertino_icons)
+- `pubspec.yaml` - Dependencies (flutter_screenutil, cupertino_icons, firebase_core, cloud_firestore, connectivity_plus)
 - `analysis_options.yaml` - Linting rules (flutter_lints)
 - `android/app/build.gradle.kts` - Android configuration
 - `test/widget_test.dart` - Testing patterns
 
 ## Development Priorities
 1. Implement task CRUD operations with priority levels
-2. Add local storage for task persistence
+2. Add local storage for task persistence (Hive)
 3. Create responsive task list and detail views
 4. Add categories (Personal vs Professional)
-5. Implement due dates and notifications</content>
+5. Implement Firebase offline-first sync (automatic + manual)
+6. Implement due dates and notifications</content>
 <parameter name="filePath">/home/habib/dev/APPS/work_manager/.github/copilot-instructions.md

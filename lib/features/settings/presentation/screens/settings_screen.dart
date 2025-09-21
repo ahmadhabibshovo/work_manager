@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../data/models/user_preferences.dart';
 import '../../../../core/services/service_locator.dart';
+import '../../../../core/services/sync_service.dart';
 import '../../../categories/data/models/category.dart';
 import '../widgets/settings_tile.dart';
 import '../../../../main.dart';
@@ -227,6 +228,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   onTap: _showDeleteAfterDialog,
                 ),
+              SettingsTile(
+                title: 'Sync Data',
+                subtitle: 'Manually sync your data to the cloud',
+                leading: Icon(
+                  Icons.sync,
+                  size: 20.sp,
+                ),
+                onTap: _syncData,
+              ),
             ],
           ),
 
@@ -516,6 +526,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return 'Education';
       default:
         return 'Custom Category';
+    }
+  }
+
+  void _syncData() async {
+    try {
+      final syncService = SyncService();
+      await syncService.manualSync();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data synced successfully')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sync failed: $e')),
+        );
+      }
     }
   }
 }

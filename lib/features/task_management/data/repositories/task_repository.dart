@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import '../../../../core/services/sync_service.dart';
 import '../models/task.dart';
 import '../models/priority.dart';
 
@@ -17,6 +18,9 @@ abstract class TaskRepository {
 class TaskRepositoryImpl implements TaskRepository {
   static const String _boxName = 'tasks';
   late Box<Task> _box;
+  final SyncService _syncService;
+
+  TaskRepositoryImpl(this._syncService);
 
   @override
   Future<void> initialize() async {
@@ -38,6 +42,15 @@ class TaskRepositoryImpl implements TaskRepository {
   @override
   Future<Task> createTask(Task task) async {
     await _box.put(task.id, task);
+    // Sync if online
+    if (_syncService.isOnline) {
+      try {
+        await _syncService.manualSync();
+      } catch (e) {
+        // Sync failed, but don't fail the operation
+        print('Sync failed after creating task: $e');
+      }
+    }
     return task;
   }
 
@@ -45,12 +58,30 @@ class TaskRepositoryImpl implements TaskRepository {
   Future<Task> updateTask(Task task) async {
     final updatedTask = task.copyWith(updatedAt: DateTime.now());
     await _box.put(task.id, updatedTask);
+    // Sync if online
+    if (_syncService.isOnline) {
+      try {
+        await _syncService.manualSync();
+      } catch (e) {
+        // Sync failed, but don't fail the operation
+        print('Sync failed after updating task: $e');
+      }
+    }
     return updatedTask;
   }
 
   @override
   Future<void> deleteTask(String id) async {
     await _box.delete(id);
+    // Sync if online
+    if (_syncService.isOnline) {
+      try {
+        await _syncService.manualSync();
+      } catch (e) {
+        // Sync failed, but don't fail the operation
+        print('Sync failed after deleting task: $e');
+      }
+    }
   }
 
   @override
