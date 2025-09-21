@@ -321,7 +321,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text('Default Priority'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [1, 2, 3].map((priority) {
+          children: [1, 2, 3, 4].map((priority) {
             return RadioListTile<int>(
               title: Text(_getPriorityDisplayName(priority)),
               value: priority,
@@ -494,6 +494,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return 'Medium';
       case 3:
         return 'High';
+      case 4:
+        return 'Urgent';
       default:
         return 'Medium';
     }

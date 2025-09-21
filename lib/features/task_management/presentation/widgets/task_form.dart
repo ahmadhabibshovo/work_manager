@@ -13,12 +13,14 @@ class TaskForm extends StatefulWidget {
   final List<Category> availableCategories;
   final Function(Task) onSave;
   final GlobalKey<TaskFormState> key;
+  final Priority? defaultPriority;
 
   const TaskForm({
     required this.key,
     this.task,
     required this.availableCategories,
     required this.onSave,
+    this.defaultPriority,
   }) : super(key: key);
 
   @override
@@ -43,7 +45,7 @@ class TaskFormState extends State<TaskForm> {
     _titleController = TextEditingController(text: widget.task?.title ?? '');
     _descriptionController = TextEditingController(text: widget.task?.description ?? '');
     _urlController = TextEditingController();
-    _selectedPriority = widget.task?.priority ?? Priority.medium;
+    _selectedPriority = widget.task?.priority ?? widget.defaultPriority ?? Priority.medium;
     _selectedDueDate = widget.task?.dueDate;
     _isCompleted = widget.task?.isCompleted ?? false;
     _selectedCategoryId = widget.task?.categoryId;

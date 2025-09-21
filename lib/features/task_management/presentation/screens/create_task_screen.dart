@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../data/models/task.dart';
+import '../../data/models/priority.dart';
 import '../../../categories/data/models/category.dart';
+import '../../../settings/data/models/user_preferences.dart';
 import '../../../../core/services/service_locator.dart';
 import '../widgets/task_form.dart';
 
@@ -43,8 +45,61 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   bool _isSaving = false;
   final GlobalKey<TaskFormState> _formKey = GlobalKey<TaskFormState>();
+  UserPreferences _preferences = const UserPreferences();
+  bool _isLoadingPreferences = true;
+  Priority? _defaultPriority;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    try {
+      final service = await ServiceLocator.getPreferencesService();
+      final preferences = await service.getUserPreferences();
+      if (mounted) {
+        setState(() {
+          _preferences = preferences;
+          _defaultPriority = _intToPriority(preferences.defaultTaskPriority);
+          _isLoadingPreferences = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingPreferences = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load preferences: $e')),
+        );
+      }
+    }
+  }
+
+  Priority _intToPriority(int priorityInt) {
+    // Map int (1=low, 2=medium, 3=high, 4=urgent) to Priority enum
+    switch (priorityInt) {
+      case 1:
+        return Priority.low;
+      case 2:
+        return Priority.medium;
+      case 3:
+        return Priority.high;
+      case 4:
+        return Priority.urgent;
+      default:
+        return Priority.medium;
+    }
+  }
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingPreferences) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Create Task')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -97,6 +152,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             key: _formKey,
             availableCategories: _availableCategories,
             onSave: _onTaskSaved,
+            defaultPriority: _defaultPriority,
           ),
         ),
       ),
