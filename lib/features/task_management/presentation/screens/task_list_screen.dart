@@ -19,7 +19,8 @@ class TaskListScreen extends StatefulWidget {
 }
 
 class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObserver {
-  Future<List<Task>>? _tasksFuture;
+  List<Task> _tasks = [];
+  bool _isLoading = true;
   String _selectedFilter = 'all'; // 'all' means "all priorities"
   String _taskStatusFilter = 'pending'; // 'all', 'pending', 'completed'
   String _selectedCategoryId = 'all'; // 'all' means "all categories"
@@ -83,14 +84,34 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
     _refreshTasks();
   }
 
-  void _loadTasks() {
-    _tasksFuture = ServiceLocator.getTaskRepository().then((repo) => repo.getAllTasks());
+  void _loadTasks() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      final repository = await ServiceLocator.getTaskRepository();
+      final tasks = await repository.getAllTasks();
+      if (mounted) {
+        setState(() {
+          _tasks = tasks;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading tasks: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _refreshTasks() {
-    setState(() {
-      _loadTasks();
-    });
+    _loadTasks();
   }
 
   // Public method to refresh tasks from outside
@@ -274,195 +295,166 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
           ),
         ],
       ),
-      body: _tasksFuture == null
+      body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : FutureBuilder<List<Task>>(
-              future: _tasksFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+          : _buildTaskList(),
+    );
+  }
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          size: 64.sp,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                        SizedBox(height: 16.h),
-                        Text(
-                          'Failed to load tasks',
-                          style: TextStyle(
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                        SizedBox(height: 8.h),
-                        Text(
-                          snapshot.error.toString(),
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  );
-                }
+  Widget _buildTaskList() {
+    final filteredTasks = _getFilteredTasks(_tasks);
 
-                final tasks = snapshot.data ?? [];
-                final filteredTasks = _getFilteredTasks(tasks);
-
-          return Column(
+    return Column(
+      children: [
+        // Filter chips
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+          child: Row(
             children: [
-              // Filter chips
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                child: Row(
-                  children: [
-                    FilterChip(
-                      label: const Text('Pending'),
-                      selected: _taskStatusFilter == 'pending',
-                      onSelected: (selected) => setState(() => _taskStatusFilter = selected ? 'pending' : 'all'),
-                    ),
-                    SizedBox(width: 8.w),
-                    FilterChip(
-                      label: const Text('Completed'),
-                      selected: _taskStatusFilter == 'completed',
-                      onSelected: (selected) => setState(() => _taskStatusFilter = selected ? 'completed' : 'all'),
-                    ),
-                    SizedBox(width: 8.w),
-                    FilterChip(
-                      label: const Text('All'),
-                      selected: _taskStatusFilter == 'all',
-                      onSelected: (selected) => setState(() => _taskStatusFilter = selected ? 'all' : 'pending'),
-                    ),
-                  ],
-                ),
+              FilterChip(
+                label: const Text('Pending'),
+                selected: _taskStatusFilter == 'pending',
+                onSelected: (selected) => setState(() => _taskStatusFilter = selected ? 'pending' : 'all'),
               ),
-
-              // Task list
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () async {
-                    _refreshTasks();
-                  },
-                  child: filteredTasks.isEmpty
-                      ? _buildEmptyState()
-                      : Scrollbar(
-                          child: ReorderableListView.builder(
-                            itemCount: filteredTasks.length,
-                          itemBuilder: (context, index) {
-                            final task = filteredTasks[index];
-                            final taskCategory = task.categoryId != null
-                                ? _availableCategories.firstWhere(
-                                    (cat) => cat.id == task.categoryId,
-                                    orElse: () {
-                                      // Try to find by type if ID doesn't match
-                                      final categoryByType = _availableCategories.firstWhere(
-                                        (cat) => cat.type.name == task.categoryId,
-                                        orElse: () => Category(
-                                          id: '',
-                                          name: 'Unknown',
-                                          type: CategoryType.other,
-                                          createdAt: DateTime.now(),
-                                        ),
-                                      );
-                                      if (categoryByType.id.isNotEmpty) {
-                                        return categoryByType;
-                                      }
-                                      // Handle legacy category IDs
-                                      return _getCategoryFromLegacyId(task.categoryId!);
-                                    },
-                                  )
-                                : null;
-                            return TaskCard(
-                              key: ValueKey(task.id),
-                              task: task,
-                              category: taskCategory,
-                              onTap: () => _editTask(task),
-                              onToggleComplete: () => _toggleTaskComplete(task),
-                            );
-                          },
-                          onReorder: (oldIndex, newIndex) async {
-                            if (oldIndex < newIndex) {
-                              newIndex -= 1;
-                            }
-                            final task = filteredTasks.removeAt(oldIndex);
-                            filteredTasks.insert(newIndex, task);
-
-                            // Adjust priority based on new position
-                            final adjustedTask = _adjustTaskPriorityBasedOnPosition(task, newIndex, filteredTasks);
-
-                            // Update the task in the list
-                            filteredTasks[newIndex] = adjustedTask;
-
-                            // Mark that priority has been adjusted by dragging
-                            _hasPriorityBeenAdjusted = true;
-
-                            // Update orders for all tasks in the filtered list
-                            for (int i = 0; i < filteredTasks.length; i++) {
-                              filteredTasks[i] = filteredTasks[i].copyWith(order: i);
-                            }
-
-                            // Re-sort the filtered tasks to maintain priority and due date order
-                            filteredTasks.sort((a, b) {
-                              // First sort by priority (higher priority first)
-                              if (a.priority.value != b.priority.value) {
-                                return b.priority.value.compareTo(a.priority.value);
-                              }
-                              // Then sort by due date (earlier dates first)
-                              if (a.dueDate != null && b.dueDate != null) {
-                                return a.dueDate!.compareTo(b.dueDate!);
-                              }
-                              // Tasks with due dates come before tasks without due dates
-                              if (a.dueDate != null && b.dueDate == null) {
-                                return -1;
-                              }
-                              if (a.dueDate == null && b.dueDate != null) {
-                                return 1;
-                              }
-                              // Finally sort by creation date
-                              return a.createdAt.compareTo(b.createdAt);
-                            });
-
-                            // Update orders again after sorting to reflect the new order
-                            for (int i = 0; i < filteredTasks.length; i++) {
-                              filteredTasks[i] = filteredTasks[i].copyWith(order: i);
-                            }
-
-                            // Save updated tasks to repository
-                            try {
-                              final repository = await ServiceLocator.getTaskRepository();
-                              for (final updatedTask in filteredTasks) {
-                                await repository.updateTask(updatedTask);
-                              }
-                              _refreshTasks(); // Refresh to reflect changes
-                            } catch (e) {
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Failed to reorder tasks: $e'),
-                                    backgroundColor: Theme.of(context).colorScheme.error,
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                        ),
-                      ),
-                ),
+              SizedBox(width: 8.w),
+              FilterChip(
+                label: const Text('Completed'),
+                selected: _taskStatusFilter == 'completed',
+                onSelected: (selected) => setState(() => _taskStatusFilter = selected ? 'completed' : 'all'),
+              ),
+              SizedBox(width: 8.w),
+              FilterChip(
+                label: const Text('All'),
+                selected: _taskStatusFilter == 'all',
+                onSelected: (selected) => setState(() => _taskStatusFilter = selected ? 'all' : 'pending'),
               ),
             ],
-          );
-        },
-      ),
+          ),
+        ),
+
+        // Task list
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              _refreshTasks();
+            },
+            child: filteredTasks.isEmpty
+                ? _buildEmptyState()
+                : Scrollbar(
+                    child: ReorderableListView.builder(
+                      itemCount: filteredTasks.length,
+                      itemBuilder: (context, index) {
+                        final task = filteredTasks[index];
+                        final taskCategory = task.categoryId != null
+                            ? _availableCategories.firstWhere(
+                                (cat) => cat.id == task.categoryId,
+                                orElse: () {
+                                  // Try to find by type if ID doesn't match
+                                  final categoryByType = _availableCategories.firstWhere(
+                                    (cat) => cat.type.name == task.categoryId,
+                                    orElse: () => Category(
+                                      id: '',
+                                      name: 'Unknown',
+                                      type: CategoryType.other,
+                                      createdAt: DateTime.now(),
+                                    ),
+                                  );
+                                  if (categoryByType.id.isNotEmpty) {
+                                    return categoryByType;
+                                  }
+                                  // Handle legacy category IDs
+                                  return _getCategoryFromLegacyId(task.categoryId!);
+                                },
+                              )
+                            : null;
+                        return TaskCard(
+                          key: ValueKey(task.id),
+                          task: task,
+                          category: taskCategory,
+                          onTap: () => _editTask(task),
+                          onToggleComplete: () => _toggleTaskComplete(task),
+                        );
+                      },
+                      onReorder: (oldIndex, newIndex) async {
+                        if (oldIndex < newIndex) {
+                          newIndex -= 1;
+                        }
+                        final task = filteredTasks.removeAt(oldIndex);
+                        filteredTasks.insert(newIndex, task);
+
+                        // Adjust priority based on new position
+                        final adjustedTask = _adjustTaskPriorityBasedOnPosition(task, newIndex, filteredTasks);
+
+                        // Update the task in the list
+                        filteredTasks[newIndex] = adjustedTask;
+
+                        // Mark that priority has been adjusted by dragging
+                        _hasPriorityBeenAdjusted = true;
+
+                        // Update orders for all tasks in the filtered list
+                        for (int i = 0; i < filteredTasks.length; i++) {
+                          filteredTasks[i] = filteredTasks[i].copyWith(order: i);
+                        }
+
+                        // Re-sort the filtered tasks to maintain priority and due date order
+                        filteredTasks.sort((a, b) {
+                          // First sort by priority (higher priority first)
+                          if (a.priority.value != b.priority.value) {
+                            return b.priority.value.compareTo(a.priority.value);
+                          }
+                          // Then sort by due date (earlier dates first)
+                          if (a.dueDate != null && b.dueDate != null) {
+                            return a.dueDate!.compareTo(b.dueDate!);
+                          }
+                          // Tasks with due dates come before tasks without due dates
+                          if (a.dueDate != null && b.dueDate == null) {
+                            return -1;
+                          }
+                          if (a.dueDate == null && b.dueDate != null) {
+                            return 1;
+                          }
+                          // Finally sort by creation date
+                          return a.createdAt.compareTo(b.createdAt);
+                        });
+
+                        // Update orders again after sorting to reflect the new order
+                        for (int i = 0; i < filteredTasks.length; i++) {
+                          filteredTasks[i] = filteredTasks[i].copyWith(order: i);
+                        }
+
+                        // Save updated tasks to repository
+                        try {
+                          final repository = await ServiceLocator.getTaskRepository();
+                          for (final updatedTask in filteredTasks) {
+                            await repository.updateTask(updatedTask);
+                          }
+                          
+                          // Update local state with the reordered tasks
+                          setState(() {
+                            // Update the tasks that were reordered
+                            for (final updatedTask in filteredTasks) {
+                              final index = _tasks.indexWhere((t) => t.id == updatedTask.id);
+                              if (index != -1) {
+                                _tasks[index] = updatedTask;
+                              }
+                            }
+                          });
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to reorder tasks: $e'),
+                                backgroundColor: Theme.of(context).colorScheme.error,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -654,10 +646,16 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
     );
 
     if (result != null && result is Task) {
+      // Task was updated
       try {
         final repository = await ServiceLocator.getTaskRepository();
-        await repository.updateTask(result);
-        _refreshTasks();
+        final updatedTask = await repository.updateTask(result);
+        setState(() {
+          final index = _tasks.indexWhere((t) => t.id == updatedTask.id);
+          if (index != -1) {
+            _tasks[index] = updatedTask;
+          }
+        });
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -669,8 +667,10 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
         }
       }
     } else if (result == 'deleted') {
-      // Task was deleted, refresh the list
-      _refreshTasks();
+      // Task was deleted - remove from local state
+      setState(() {
+        _tasks.removeWhere((t) => t.id == task.id);
+      });
     }
   }
 
@@ -682,7 +682,14 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
         updatedAt: DateTime.now(),
       );
       await repository.updateTask(updatedTask);
-      _refreshTasks();
+      
+      // Update local state
+      setState(() {
+        final index = _tasks.indexWhere((t) => t.id == task.id);
+        if (index != -1) {
+          _tasks[index] = updatedTask;
+        }
+      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
