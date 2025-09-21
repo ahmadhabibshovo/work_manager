@@ -29,6 +29,9 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
   bool _isLoadingCategories = true;
   late CategoryRepository _categoryRepository;
 
+  // Track if priorities have been adjusted by dragging
+  bool _hasPriorityBeenAdjusted = false;
+
   @override
   void initState() {
     super.initState();
@@ -352,8 +355,9 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
                   },
                   child: filteredTasks.isEmpty
                       ? _buildEmptyState()
-                      : ReorderableListView.builder(
-                          itemCount: filteredTasks.length,
+                      : Scrollbar(
+                          child: ReorderableListView.builder(
+                            itemCount: filteredTasks.length,
                           itemBuilder: (context, index) {
                             final task = filteredTasks[index];
                             final taskCategory = task.categoryId != null
@@ -395,7 +399,42 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
                             final task = filteredTasks.removeAt(oldIndex);
                             filteredTasks.insert(newIndex, task);
 
+                            // Adjust priority based on new position
+                            final adjustedTask = _adjustTaskPriorityBasedOnPosition(task, newIndex, filteredTasks);
+
+                            // Update the task in the list
+                            filteredTasks[newIndex] = adjustedTask;
+
+                            // Mark that priority has been adjusted by dragging
+                            _hasPriorityBeenAdjusted = true;
+
                             // Update orders for all tasks in the filtered list
+                            for (int i = 0; i < filteredTasks.length; i++) {
+                              filteredTasks[i] = filteredTasks[i].copyWith(order: i);
+                            }
+
+                            // Re-sort the filtered tasks to maintain priority and due date order
+                            filteredTasks.sort((a, b) {
+                              // First sort by priority (higher priority first)
+                              if (a.priority.value != b.priority.value) {
+                                return b.priority.value.compareTo(a.priority.value);
+                              }
+                              // Then sort by due date (earlier dates first)
+                              if (a.dueDate != null && b.dueDate != null) {
+                                return a.dueDate!.compareTo(b.dueDate!);
+                              }
+                              // Tasks with due dates come before tasks without due dates
+                              if (a.dueDate != null && b.dueDate == null) {
+                                return -1;
+                              }
+                              if (a.dueDate == null && b.dueDate != null) {
+                                return 1;
+                              }
+                              // Finally sort by creation date
+                              return a.createdAt.compareTo(b.createdAt);
+                            });
+
+                            // Update orders again after sorting to reflect the new order
                             for (int i = 0; i < filteredTasks.length; i++) {
                               filteredTasks[i] = filteredTasks[i].copyWith(order: i);
                             }
@@ -419,6 +458,7 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
                             }
                           },
                         ),
+                      ),
                 ),
               ),
             ],
@@ -476,17 +516,30 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
     }
     // For 'all', no filtering needed
 
-    // Sort by priority (high to low) then by due date, but prioritize manual order if no filters
-    if (_selectedFilter == 'all' && _taskStatusFilter == 'all' && _selectedCategoryId == 'all') {
+    // Always sort by priority (Urgent > High > Medium > Low) then by due date
+    // Manual order is only used when no filters are applied AND tasks haven't been reordered by priority changes
+    final hasManualOrder = filteredTasks.any((task) => task.order > 0) && !_hasPriorityBeenAdjusted;
+
+    if (_selectedFilter == 'all' && _taskStatusFilter == 'all' && _selectedCategoryId == 'all' && hasManualOrder) {
       filteredTasks.sort((a, b) => a.order.compareTo(b.order));
     } else {
       filteredTasks.sort((a, b) {
+        // First sort by priority (higher priority first)
         if (a.priority.value != b.priority.value) {
           return b.priority.value.compareTo(a.priority.value);
         }
+        // Then sort by due date (earlier dates first)
         if (a.dueDate != null && b.dueDate != null) {
           return a.dueDate!.compareTo(b.dueDate!);
         }
+        // Tasks with due dates come before tasks without due dates
+        if (a.dueDate != null && b.dueDate == null) {
+          return -1;
+        }
+        if (a.dueDate == null && b.dueDate != null) {
+          return 1;
+        }
+        // Finally sort by creation date
         return a.createdAt.compareTo(b.createdAt);
       });
     }
@@ -686,5 +739,34 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
       (priority) => priority.name == name,
       orElse: () => Priority.low, // fallback
     );
+  }
+
+  Task _adjustTaskPriorityBasedOnPosition(Task task, int newIndex, List<Task> tasks) {
+    if (tasks.isEmpty) return task;
+
+    Priority expectedPriority = task.priority;
+
+    // Special cases for top and bottom positions
+    if (newIndex == 0) {
+      // Dragged to the top - becomes Urgent
+      expectedPriority = Priority.urgent;
+    } else if (newIndex == tasks.length - 1) {
+      // Dragged to the bottom - becomes Low
+      expectedPriority = Priority.low;
+    } else {
+      // For middle positions, match the priority of the task immediately above
+      final taskAbove = tasks[newIndex - 1];
+      expectedPriority = taskAbove.priority;
+    }
+
+    // Only update if priority actually changed
+    if (expectedPriority != task.priority) {
+      return task.copyWith(
+        priority: expectedPriority,
+        updatedAt: DateTime.now(),
+      );
+    }
+
+    return task;
   }
 }
