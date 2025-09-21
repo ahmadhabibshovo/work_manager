@@ -72,11 +72,11 @@ class SyncService {
   Future<void> _syncAllData() async {
     try {
       print('🔄 SyncService: Starting full data sync...');
-      // First download any new data from Firestore
-      await downloadAllData();
-      // Then upload local data to Firestore
+      // First upload local data to Firestore (including deletions)
       await _syncTasks();
       await _syncCategories();
+      // Then download any new data from Firestore
+      await downloadAllData();
       print('🔄 SyncService: Full data sync completed');
     } catch (e) {
       print('❌ SyncService: Sync failed: $e');
@@ -87,8 +87,8 @@ class SyncService {
   Future<void> _syncTasks() async {
     print('🔄 SyncService: Syncing tasks...');
     final taskBox = await Hive.openBox<Task>('tasks');
-    final tasks = taskBox.values.toList();
-    print('🔄 SyncService: Found ${tasks.length} local tasks');
+    final localTasks = taskBox.values.toList();
+    print('🔄 SyncService: Found ${localTasks.length} local tasks');
 
     // Get current user ID
     final currentUser = _authService.currentUser;
@@ -98,11 +98,32 @@ class SyncService {
     }
     final userId = currentUser.id;
 
-    final batch = _firestore.batch();
     final tasksRef = _firestore.collection('users').doc(userId).collection('tasks');
 
-    // Upload local tasks to Firestore
-    for (final task in tasks) {
+    // Get all tasks from Firestore
+    final firestoreSnapshot = await tasksRef.get();
+    final firestoreTasks = firestoreSnapshot.docs;
+    print('🔄 SyncService: Found ${firestoreTasks.length} tasks in Firestore');
+
+    // Create a map of local task IDs for quick lookup
+    final localTaskIds = Set<String>.from(localTasks.map((task) => task.id));
+
+    // Delete tasks from Firestore that don't exist locally (they were deleted locally)
+    final batch = _firestore.batch();
+    int deletedCount = 0;
+
+    for (final doc in firestoreTasks) {
+      final taskId = doc.id;
+      if (!localTaskIds.contains(taskId)) {
+        // Task exists in Firestore but not locally - it was deleted locally, so delete from Firestore
+        batch.delete(doc.reference);
+        deletedCount++;
+        print('🔄 SyncService: Deleting task from Firestore: $taskId');
+      }
+    }
+
+    // Upload/update local tasks to Firestore
+    for (final task in localTasks) {
       final taskRef = tasksRef.doc(task.id);
       batch.set(taskRef, {
         'id': task.id,
@@ -114,18 +135,19 @@ class SyncService {
         'dueDate': task.dueDate?.toIso8601String(),
         'createdAt': task.createdAt.toIso8601String(),
         'updatedAt': task.updatedAt?.toIso8601String(),
+        'order': task.order,
       });
     }
 
     await batch.commit();
-    print('🔄 SyncService: Tasks sync completed, uploaded ${tasks.length} tasks');
+    print('🔄 SyncService: Tasks sync completed - Deleted: $deletedCount, Uploaded: ${localTasks.length} tasks');
   }
 
   Future<void> _syncCategories() async {
     print('🔄 SyncService: Syncing categories...');
     final categoryBox = await Hive.openBox<Category>('categories');
-    final categories = categoryBox.values.toList();
-    print('🔄 SyncService: Found ${categories.length} local categories');
+    final localCategories = categoryBox.values.toList();
+    print('🔄 SyncService: Found ${localCategories.length} local categories');
 
     // Get current user ID
     final currentUser = _authService.currentUser;
@@ -135,11 +157,32 @@ class SyncService {
     }
     final userId = currentUser.id;
 
-    final batch = _firestore.batch();
     final categoriesRef = _firestore.collection('users').doc(userId).collection('categories');
 
-    // Upload local categories to Firestore
-    for (final category in categories) {
+    // Get all categories from Firestore
+    final firestoreSnapshot = await categoriesRef.get();
+    final firestoreCategories = firestoreSnapshot.docs;
+    print('🔄 SyncService: Found ${firestoreCategories.length} categories in Firestore');
+
+    // Create a map of local category IDs for quick lookup
+    final localCategoryIds = Set<String>.from(localCategories.map((category) => category.id));
+
+    // Delete categories from Firestore that don't exist locally (they were deleted locally)
+    final batch = _firestore.batch();
+    int deletedCount = 0;
+
+    for (final doc in firestoreCategories) {
+      final categoryId = doc.id;
+      if (!localCategoryIds.contains(categoryId)) {
+        // Category exists in Firestore but not locally - it was deleted locally, so delete from Firestore
+        batch.delete(doc.reference);
+        deletedCount++;
+        print('🔄 SyncService: Deleting category from Firestore: $categoryId');
+      }
+    }
+
+    // Upload/update local categories to Firestore
+    for (final category in localCategories) {
       final categoryRef = categoriesRef.doc(category.id);
       batch.set(categoryRef, {
         'id': category.id,
@@ -152,7 +195,7 @@ class SyncService {
     }
 
     await batch.commit();
-    print('🔄 SyncService: Categories sync completed, uploaded ${categories.length} categories');
+    print('🔄 SyncService: Categories sync completed - Deleted: $deletedCount, Uploaded: ${localCategories.length} categories');
   }
 
   // Future methods for downloading from Firestore (to be implemented)
