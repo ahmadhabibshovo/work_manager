@@ -6,7 +6,9 @@ import 'core/services/service_locator.dart';
 import 'core/services/sync_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/navigation/app_router.dart';
+import 'core/widgets/home_page.dart';
 import 'features/settings/data/models/user_preferences.dart';
+import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/data/repositories/auth_service.dart';
 
 void main() async {
@@ -17,6 +19,47 @@ void main() async {
   await ServiceLocator.initialize();
   await SyncService().initialize();
   runApp(PriorityManagerApp(key: PriorityManagerApp._appKey));
+}
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder(
+      stream: AuthService().authStateChanges,
+      builder: (context, snapshot) {
+        // Show loading screen while determining auth state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16.h),
+                  Text(
+                    'Loading...',
+                    style: TextStyle(fontSize: 16.sp),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // Check if user is authenticated
+        final isAuthenticated = snapshot.hasData && snapshot.data != null;
+
+        // Navigate to appropriate screen
+        if (isAuthenticated) {
+          return const HomePage();
+        } else {
+          return const LoginScreen();
+        }
+      },
+    );
+  }
 }
 
 class PriorityManagerApp extends StatefulWidget {
@@ -75,21 +118,14 @@ class _PriorityManagerAppState extends State<PriorityManagerApp> {
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
-        return StreamBuilder(
-          stream: AuthService().authStateChanges,
-          builder: (context, snapshot) {
-            final isAuthenticated = snapshot.hasData && snapshot.data != null;
-
-            return MaterialApp(
-              title: 'Priority Manager',
-              theme: AppTheme.lightTheme,
-              darkTheme: AppTheme.darkTheme,
-              themeMode: _themeMode,
-              initialRoute: isAuthenticated ? '/' : '/login',
-              onGenerateRoute: AppRouter.generateRoute,
-              debugShowCheckedModeBanner: false,
-            );
-          },
+        return MaterialApp(
+          title: 'Priority Manager',
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: _themeMode,
+          home: AuthWrapper(),
+          onGenerateRoute: AppRouter.generateRoute,
+          debugShowCheckedModeBanner: false,
         );
       },
     );
