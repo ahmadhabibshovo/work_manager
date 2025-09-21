@@ -27,6 +27,8 @@ class Task {
   final String? categoryId;
   @HiveField(9)
   final List<TaskAttachment> attachments;
+  @HiveField(10)
+  final int order;
 
   const Task({
     required this.id,
@@ -39,6 +41,7 @@ class Task {
     this.updatedAt,
     this.categoryId,
     this.attachments = const [],
+    this.order = 0,
   });
 
   Task copyWith({
@@ -52,6 +55,7 @@ class Task {
     DateTime? updatedAt,
     String? categoryId,
     List<TaskAttachment>? attachments,
+    int? order,
   }) {
     return Task(
       id: id ?? this.id,
@@ -64,6 +68,7 @@ class Task {
       updatedAt: updatedAt ?? this.updatedAt,
       categoryId: categoryId ?? this.categoryId,
       attachments: attachments ?? this.attachments,
+      order: order ?? this.order,
     );
   }
 
@@ -79,6 +84,7 @@ class Task {
       'updatedAt': updatedAt?.toIso8601String(),
       'categoryId': categoryId,
       'attachments': attachments.map((attachment) => attachment.toJson()).toList(),
+      'order': order,
     };
   }
 
@@ -102,12 +108,13 @@ class Task {
               .map((attachmentJson) => TaskAttachment.fromJson(attachmentJson as Map<String, dynamic>))
               .toList()
           : [],
+      order: json['order'] as int? ?? 0,
     );
   }
 
   @override
   String toString() {
-    return 'Task(id: $id, title: $title, priority: $priority, isCompleted: $isCompleted)';
+    return 'Task(id: $id, title: $title, priority: $priority, isCompleted: $isCompleted, order: $order)';
   }
 
   @override
@@ -124,7 +131,8 @@ class Task {
         other.createdAt == createdAt &&
         other.updatedAt == updatedAt &&
         other.categoryId == categoryId &&
-        listEquals(other.attachments, attachments);
+        listEquals(other.attachments, attachments) &&
+        other.order == order;
   }
 
   @override
@@ -138,6 +146,7 @@ class Task {
         createdAt.hashCode ^
         updatedAt.hashCode ^
         categoryId.hashCode ^
-        attachments.hashCode;
+        attachments.hashCode ^
+        order.hashCode;
   }
 }

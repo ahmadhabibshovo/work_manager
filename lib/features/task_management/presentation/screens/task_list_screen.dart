@@ -352,7 +352,7 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
                   },
                   child: filteredTasks.isEmpty
                       ? _buildEmptyState()
-                      : ListView.builder(
+                      : ReorderableListView.builder(
                           itemCount: filteredTasks.length,
                           itemBuilder: (context, index) {
                             final task = filteredTasks[index];
@@ -379,6 +379,7 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
                                   )
                                 : null;
                             return TaskCard(
+                              key: ValueKey(task.id),
                               task: task,
                               category: taskCategory,
                               onTap: () => _editTask(task),
@@ -386,6 +387,36 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
                               onEdit: () => _editTask(task),
                               onDelete: () => _deleteTask(task),
                             );
+                          },
+                          onReorder: (oldIndex, newIndex) async {
+                            if (oldIndex < newIndex) {
+                              newIndex -= 1;
+                            }
+                            final task = filteredTasks.removeAt(oldIndex);
+                            filteredTasks.insert(newIndex, task);
+
+                            // Update orders for all tasks in the filtered list
+                            for (int i = 0; i < filteredTasks.length; i++) {
+                              filteredTasks[i] = filteredTasks[i].copyWith(order: i);
+                            }
+
+                            // Save updated tasks to repository
+                            try {
+                              final repository = await ServiceLocator.getTaskRepository();
+                              for (final updatedTask in filteredTasks) {
+                                await repository.updateTask(updatedTask);
+                              }
+                              _refreshTasks(); // Refresh to reflect changes
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Failed to reorder tasks: $e'),
+                                    backgroundColor: Theme.of(context).colorScheme.error,
+                                  ),
+                                );
+                              }
+                            }
                           },
                         ),
                 ),
@@ -445,16 +476,20 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
     }
     // For 'all', no filtering needed
 
-    // Sort by priority (high to low) then by due date
-    filteredTasks.sort((a, b) {
-      if (a.priority.value != b.priority.value) {
-        return b.priority.value.compareTo(a.priority.value);
-      }
-      if (a.dueDate != null && b.dueDate != null) {
-        return a.dueDate!.compareTo(b.dueDate!);
-      }
-      return a.createdAt.compareTo(b.createdAt);
-    });
+    // Sort by priority (high to low) then by due date, but prioritize manual order if no filters
+    if (_selectedFilter == 'all' && _taskStatusFilter == 'all' && _selectedCategoryId == 'all') {
+      filteredTasks.sort((a, b) => a.order.compareTo(b.order));
+    } else {
+      filteredTasks.sort((a, b) {
+        if (a.priority.value != b.priority.value) {
+          return b.priority.value.compareTo(a.priority.value);
+        }
+        if (a.dueDate != null && b.dueDate != null) {
+          return a.dueDate!.compareTo(b.dueDate!);
+        }
+        return a.createdAt.compareTo(b.createdAt);
+      });
+    }
 
     return filteredTasks;
   }
