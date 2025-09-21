@@ -392,6 +392,12 @@ class _TaskFormState extends State<TaskForm> {
   void _saveTask() {
     if (!_formKey.currentState!.validate()) return;
 
+    // Automatically add any URL in the text field as an attachment
+    final urlText = _urlController.text.trim();
+    if (urlText.isNotEmpty) {
+      _addUrlAttachment();
+    }
+
     final task = Task(
       id: widget.task?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
       title: _titleController.text.trim(),
