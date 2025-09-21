@@ -44,6 +44,8 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
       createdAt: DateTime.now(),
     ),
   ];
+  
+  final GlobalKey<TaskFormState> _formKey = GlobalKey<TaskFormState>();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -80,6 +82,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
         child: SingleChildScrollView(
           padding: EdgeInsets.all(16.r),
           child: TaskForm(
+            key: _formKey,
             task: widget.task,
             availableCategories: _availableCategories,
             onSave: _onTaskSaved,
@@ -90,8 +93,8 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   }
 
   void _saveTask() {
-    // This will be called by the form when save is pressed
-    // The actual saving logic is handled by the TaskForm widget
+    // Trigger the form's save method
+    _formKey.currentState?.save();
   }
 
   void _onTaskSaved(Task task) {

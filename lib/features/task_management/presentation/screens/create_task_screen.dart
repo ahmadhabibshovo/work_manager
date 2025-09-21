@@ -42,6 +42,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   ];
 
   bool _isSaving = false;
+  final GlobalKey<TaskFormState> _formKey = GlobalKey<TaskFormState>();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,6 +94,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         child: SingleChildScrollView(
           padding: EdgeInsets.all(16.r),
           child: TaskForm(
+            key: _formKey,
             availableCategories: _availableCategories,
             onSave: _onTaskSaved,
           ),
@@ -102,8 +104,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   }
 
   void _saveTask() {
-    // This will be called by the form when save is pressed
-    // The actual saving logic is handled by the TaskForm widget
+    // Trigger the form's save method
+    _formKey.currentState?.save();
   }
 
   void _onTaskSaved(Task task) async {
