@@ -19,7 +19,7 @@ class TaskListScreen extends StatefulWidget {
 }
 
 class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObserver {
-  late Future<List<Task>> _tasksFuture;
+  Future<List<Task>>? _tasksFuture;
   Priority _selectedFilter = Priority.medium;
   bool _showCompleted = true;
   String _selectedCategoryId = 'all'; // 'all' means "all categories"
@@ -271,48 +271,50 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
           ),
         ],
       ),
-      body: FutureBuilder<List<Task>>(
-        future: _tasksFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: _tasksFuture == null
+          ? const Center(child: CircularProgressIndicator())
+          : FutureBuilder<List<Task>>(
+              future: _tasksFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64.sp,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  SizedBox(height: 16.h),
-                  Text(
-                    'Failed to load tasks',
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.onSurface,
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 64.sp,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        SizedBox(height: 16.h),
+                        Text(
+                          'Failed to load tasks',
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                        SizedBox(height: 8.h),
+                        Text(
+                          snapshot.error.toString(),
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
-                  ),
-                  SizedBox(height: 8.h),
-                  Text(
-                    snapshot.error.toString(),
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
-          }
+                  );
+                }
 
-          final tasks = snapshot.data ?? [];
-          final filteredTasks = _getFilteredTasks(tasks);
+                final tasks = snapshot.data ?? [];
+                final filteredTasks = _getFilteredTasks(tasks);
 
           return Column(
             children: [
@@ -351,12 +353,23 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
                             final taskCategory = task.categoryId != null
                                 ? _availableCategories.firstWhere(
                                     (cat) => cat.id == task.categoryId,
-                                    orElse: () => Category(
-                                      id: '',
-                                      name: 'Unknown',
-                                      type: CategoryType.other,
-                                      createdAt: DateTime.now(),
-                                    ),
+                                    orElse: () {
+                                      // Try to find by type if ID doesn't match
+                                      final categoryByType = _availableCategories.firstWhere(
+                                        (cat) => cat.type.name == task.categoryId,
+                                        orElse: () => Category(
+                                          id: '',
+                                          name: 'Unknown',
+                                          type: CategoryType.other,
+                                          createdAt: DateTime.now(),
+                                        ),
+                                      );
+                                      if (categoryByType.id.isNotEmpty) {
+                                        return categoryByType;
+                                      }
+                                      // Handle legacy category IDs
+                                      return _getCategoryFromLegacyId(task.categoryId!);
+                                    },
                                   )
                                 : null;
                             return TaskCard(
@@ -383,7 +396,33 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
 
     // Filter by category
     if (_selectedCategoryId != 'all') {
-      filteredTasks = filteredTasks.where((task) => task.categoryId == _selectedCategoryId).toList();
+      // Find the selected category to get its type
+      final selectedCategory = _availableCategories.firstWhere(
+        (cat) => cat.id == _selectedCategoryId,
+        orElse: () => Category(
+          id: _selectedCategoryId,
+          name: 'Unknown',
+          type: CategoryType.other,
+          createdAt: DateTime.now(),
+        ),
+      );
+
+      // Filter tasks that match either the category ID or the legacy ID
+      filteredTasks = filteredTasks.where((task) {
+        if (task.categoryId == null) return false;
+
+        // Check if task category ID matches the selected category ID
+        if (task.categoryId == _selectedCategoryId) return true;
+
+        // Check if task category ID matches the selected category type
+        if (task.categoryId == selectedCategory.type.name) return true;
+
+        // Check legacy ID mapping
+        final legacyId = _getLegacyIdFromCategoryId(_selectedCategoryId);
+        if (task.categoryId == legacyId) return true;
+
+        return false;
+      }).toList();
     }
 
     // Filter by priority
@@ -440,6 +479,75 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
         ],
       ),
     );
+  }
+
+  Category _getCategoryFromLegacyId(String legacyId) {
+    // Map legacy category IDs to new category types
+    switch (legacyId) {
+      case '1':
+        return _availableCategories.firstWhere(
+          (cat) => cat.type == CategoryType.work,
+          orElse: () => Category(
+            id: 'work',
+            name: 'Work',
+            type: CategoryType.work,
+            createdAt: DateTime.now(),
+          ),
+        );
+      case '2':
+        return _availableCategories.firstWhere(
+          (cat) => cat.type == CategoryType.personal,
+          orElse: () => Category(
+            id: 'personal',
+            name: 'Personal',
+            type: CategoryType.personal,
+            createdAt: DateTime.now(),
+          ),
+        );
+      case '3':
+        return _availableCategories.firstWhere(
+          (cat) => cat.type == CategoryType.health,
+          orElse: () => Category(
+            id: 'health',
+            name: 'Health',
+            type: CategoryType.health,
+            createdAt: DateTime.now(),
+          ),
+        );
+      case '4':
+        return _availableCategories.firstWhere(
+          (cat) => cat.type == CategoryType.education,
+          orElse: () => Category(
+            id: 'education',
+            name: 'Education',
+            type: CategoryType.education,
+            createdAt: DateTime.now(),
+          ),
+        );
+      default:
+        return Category(
+          id: '',
+          name: 'Unknown',
+          type: CategoryType.other,
+          createdAt: DateTime.now(),
+        );
+    }
+  }
+
+  String _getLegacyIdFromCategoryId(String categoryId) {
+    // Map new category IDs to legacy category IDs
+    switch (categoryId) {
+      case 'work':
+        return '1';
+      case 'personal':
+        return '2';
+      case 'health':
+        return '3';
+      case 'education':
+        return '4';
+      default:
+        return categoryId; // Return as-is if no mapping found
+    }
   }
 
   void _editTask(Task task) async {
