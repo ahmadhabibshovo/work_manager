@@ -382,14 +382,60 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
                                     },
                                   )
                                 : null;
-                            return TaskCard(
+                            return Dismissible(
                               key: ValueKey(task.id),
-                              task: task,
-                              category: taskCategory,
-                              onTap: () => _editTask(task),
-                              onToggleComplete: () => _toggleTaskComplete(task),
-                              onEdit: () => _editTask(task),
-                              onDelete: () => _deleteTask(task),
+                              direction: DismissDirection.horizontal,
+                              background: Container(
+                                alignment: Alignment.centerLeft,
+                                padding: EdgeInsets.only(left: 20.w),
+                                color: Theme.of(context).colorScheme.error,
+                                child: Icon(
+                                  Icons.delete,
+                                  color: Theme.of(context).colorScheme.onError,
+                                  size: 28.sp,
+                                ),
+                              ),
+                              secondaryBackground: Container(
+                                alignment: Alignment.centerRight,
+                                padding: EdgeInsets.only(right: 20.w),
+                                color: Theme.of(context).colorScheme.error,
+                                child: Icon(
+                                  Icons.delete,
+                                  color: Theme.of(context).colorScheme.onError,
+                                  size: 28.sp,
+                                ),
+                              ),
+                              confirmDismiss: (direction) async {
+                                return await showDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return AlertDialog(
+                                      title: const Text('Delete Task'),
+                                      content: Text('Are you sure you want to delete "${task.title}"?'),
+                                      actions: <Widget>[
+                                        TextButton(
+                                          onPressed: () => Navigator.of(context).pop(false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () => Navigator.of(context).pop(true),
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                              onDismissed: (direction) {
+                                _deleteTask(task);
+                              },
+                              child: TaskCard(
+                                key: ValueKey(task.id),
+                                task: task,
+                                category: taskCategory,
+                                onTap: () => _editTask(task),
+                                onToggleComplete: () => _toggleTaskComplete(task),
+                              ),
                             );
                           },
                           onReorder: (oldIndex, newIndex) async {
@@ -695,41 +741,18 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
   }
 
   void _deleteTask(Task task) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Task'),
-        content: Text('Are you sure you want to delete "${task.title}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+    try {
+      final repository = await ServiceLocator.getTaskRepository();
+      await repository.deleteTask(task.id);
+      _refreshTasks();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete task: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        final repository = await ServiceLocator.getTaskRepository();
-        await repository.deleteTask(task.id);
-        _refreshTasks();
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to delete task: $e'),
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-          );
-        }
+        );
       }
     }
   }

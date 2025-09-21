@@ -9,8 +9,6 @@ class TaskCard extends StatelessWidget {
   final Category? category;
   final VoidCallback? onTap;
   final VoidCallback? onToggleComplete;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
 
   const TaskCard({
     super.key,
@@ -18,8 +16,6 @@ class TaskCard extends StatelessWidget {
     this.category,
     this.onTap,
     this.onToggleComplete,
-    this.onEdit,
-    this.onDelete,
   });
 
   @override
@@ -125,28 +121,6 @@ class TaskCard extends StatelessWidget {
                     ),
                   ],
                   const Spacer(),
-                  if (onEdit != null)
-                    IconButton(
-                      onPressed: onEdit,
-                      icon: Icon(
-                        Icons.edit_outlined,
-                        size: 20.sp,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  if (onDelete != null)
-                    IconButton(
-                      onPressed: onDelete,
-                      icon: Icon(
-                        Icons.delete_outline,
-                        size: 20.sp,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
                 ],
               ),
             ],
