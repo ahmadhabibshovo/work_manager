@@ -1,14 +1,17 @@
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../features/categories/data/models/category.dart';
 import '../../features/categories/data/repositories/category_repository.dart';
 import '../../features/task_management/data/models/priority.dart';
 import '../../features/task_management/data/models/task.dart';
 import '../../features/task_management/data/models/task_attachment.dart';
 import '../../features/task_management/data/repositories/task_repository.dart';
+import '../../features/settings/data/services/preferences_service.dart';
 
 class ServiceLocator {
   static CategoryRepository? _categoryRepository;
   static TaskRepository? _taskRepository;
+  static PreferencesService? _preferencesService;
 
   static Future<void> initialize() async {
     await Hive.initFlutter();
@@ -24,6 +27,9 @@ class ServiceLocator {
 
     _taskRepository = TaskRepositoryImpl();
     await _taskRepository!.initialize();
+
+    final prefs = await SharedPreferences.getInstance();
+    _preferencesService = PreferencesServiceImpl(prefs);
   }
 
   static Future<CategoryRepository> getCategoryRepository() async {
@@ -42,5 +48,14 @@ class ServiceLocator {
 
     await initialize();
     return _taskRepository!;
+  }
+
+  static Future<PreferencesService> getPreferencesService() async {
+    if (_preferencesService != null) {
+      return _preferencesService!;
+    }
+
+    await initialize();
+    return _preferencesService!;
   }
 }
