@@ -21,7 +21,7 @@ class TaskListScreen extends StatefulWidget {
 class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObserver {
   Future<List<Task>>? _tasksFuture;
   String _selectedFilter = 'all'; // 'all' means "all priorities"
-  bool _showCompleted = true;
+  String _taskStatusFilter = 'all'; // 'all', 'pending', 'completed'
   String _selectedCategoryId = 'all'; // 'all' means "all categories"
 
   // Dynamic categories loaded from database
@@ -325,14 +325,20 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
                   children: [
                     FilterChip(
                       label: const Text('Pending'),
-                      selected: !_showCompleted,
-                      onSelected: (selected) => setState(() => _showCompleted = !selected),
+                      selected: _taskStatusFilter == 'pending',
+                      onSelected: (selected) => setState(() => _taskStatusFilter = selected ? 'pending' : 'all'),
                     ),
                     SizedBox(width: 8.w),
                     FilterChip(
                       label: const Text('Completed'),
-                      selected: _showCompleted,
-                      onSelected: (selected) => setState(() => _showCompleted = selected),
+                      selected: _taskStatusFilter == 'completed',
+                      onSelected: (selected) => setState(() => _taskStatusFilter = selected ? 'completed' : 'all'),
+                    ),
+                    SizedBox(width: 8.w),
+                    FilterChip(
+                      label: const Text('All'),
+                      selected: _taskStatusFilter == 'all',
+                      onSelected: (selected) => setState(() => _taskStatusFilter = selected ? 'all' : 'pending'),
                     ),
                   ],
                 ),
@@ -432,9 +438,12 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
     }
 
     // Filter by completion status
-    if (!_showCompleted) {
+    if (_taskStatusFilter == 'pending') {
       filteredTasks = filteredTasks.where((task) => !task.isCompleted).toList();
+    } else if (_taskStatusFilter == 'completed') {
+      filteredTasks = filteredTasks.where((task) => task.isCompleted).toList();
     }
+    // For 'all', no filtering needed
 
     // Sort by priority (high to low) then by due date
     filteredTasks.sort((a, b) {
