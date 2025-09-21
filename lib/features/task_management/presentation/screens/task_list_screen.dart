@@ -348,8 +348,20 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
                           itemCount: filteredTasks.length,
                           itemBuilder: (context, index) {
                             final task = filteredTasks[index];
+                            final taskCategory = task.categoryId != null
+                                ? _availableCategories.firstWhere(
+                                    (cat) => cat.id == task.categoryId,
+                                    orElse: () => Category(
+                                      id: '',
+                                      name: 'Unknown',
+                                      type: CategoryType.other,
+                                      createdAt: DateTime.now(),
+                                    ),
+                                  )
+                                : null;
                             return TaskCard(
                               task: task,
+                              category: taskCategory,
                               onTap: () => _editTask(task),
                               onToggleComplete: () => _toggleTaskComplete(task),
                               onEdit: () => _editTask(task),
