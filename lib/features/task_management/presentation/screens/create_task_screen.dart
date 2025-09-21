@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../data/models/task.dart';
@@ -23,6 +24,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   bool _isLoadingPreferences = true;
   Priority? _defaultPriority;
   bool _isLoadingCategories = true;
+  StreamSubscription<List<Category>>? _categoriesSubscription;
 
   @override
   void initState() {
@@ -34,6 +36,18 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   Future<void> _loadCategories() async {
     try {
       final repository = await ServiceLocator.getCategoryRepository();
+      
+      // Listen to category changes
+      _categoriesSubscription = repository.categoriesStream.listen((categories) {
+        if (mounted) {
+          setState(() {
+            _availableCategories = categories;
+            _isLoadingCategories = false;
+          });
+        }
+      });
+      
+      // Load initial categories
       final categories = await repository.getAllCategories();
       if (mounted) {
         setState(() {
@@ -49,6 +63,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
         );
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _categoriesSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadPreferences() async {

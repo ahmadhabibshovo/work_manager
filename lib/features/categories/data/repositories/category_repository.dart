@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:hive/hive.dart';
 import '../../../../core/services/sync_service.dart';
 import '../models/category.dart';
@@ -10,14 +11,26 @@ abstract class CategoryRepository {
   Future<void> deleteCategory(String id);
   Future<List<Category>> getCategoriesByType(CategoryType type);
   Future<void> initialize();
+  Stream<List<Category>> get categoriesStream;
+  Future<void> refreshCategories();
 }
 
 class CategoryRepositoryImpl implements CategoryRepository {
   static const String _boxName = 'categories';
   late Box<Category> _box;
   final SyncService _syncService;
+  final StreamController<List<Category>> _categoriesController = StreamController<List<Category>>.broadcast();
 
   CategoryRepositoryImpl(this._syncService);
+
+  @override
+  Stream<List<Category>> get categoriesStream => _categoriesController.stream;
+
+  @override
+  Future<void> refreshCategories() async {
+    final categories = await getAllCategories();
+    _categoriesController.add(categories);
+  }
 
   @override
   Future<void> initialize() async {
@@ -30,6 +43,9 @@ class CategoryRepositoryImpl implements CategoryRepository {
         await _box.put(category.id, category);
       }
     }
+
+    // Emit initial categories
+    await refreshCategories();
   }
 
   @override
@@ -47,6 +63,7 @@ class CategoryRepositoryImpl implements CategoryRepository {
   @override
   Future<Category> createCategory(Category category) async {
     await _box.put(category.id, category);
+    await refreshCategories(); // Emit updated categories
     // Sync if online
     if (_syncService.isOnline) {
       try {
@@ -63,6 +80,7 @@ class CategoryRepositoryImpl implements CategoryRepository {
   Future<Category> updateCategory(Category category) async {
     final updatedCategory = category.copyWith(updatedAt: DateTime.now());
     await _box.put(category.id, updatedCategory);
+    await refreshCategories(); // Emit updated categories
     // Sync if online
     if (_syncService.isOnline) {
       try {
@@ -78,6 +96,7 @@ class CategoryRepositoryImpl implements CategoryRepository {
   @override
   Future<void> deleteCategory(String id) async {
     await _box.delete(id);
+    await refreshCategories(); // Emit updated categories
     // Sync if online
     if (_syncService.isOnline) {
       try {
@@ -133,5 +152,9 @@ class CategoryRepositoryImpl implements CategoryRepository {
         createdAt: DateTime.now(),
       ),
     ];
+  }
+
+  void dispose() {
+    _categoriesController.close();
   }
 }

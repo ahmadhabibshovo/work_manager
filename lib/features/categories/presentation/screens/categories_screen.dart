@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../core/services/service_locator.dart';
@@ -18,6 +19,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
   bool _isGridView = true;
   final TextEditingController _searchController = TextEditingController();
+  StreamSubscription<List<Category>>? _categoriesSubscription;
 
   @override
   void initState() {
@@ -28,6 +30,18 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   Future<void> _loadCategories() async {
     try {
       _repository = await ServiceLocator.getCategoryRepository();
+      
+      // Listen to category changes
+      _categoriesSubscription = _repository.categoriesStream.listen((categories) {
+        if (mounted) {
+          setState(() {
+            _categories = categories;
+            _isLoading = false;
+          });
+        }
+      });
+      
+      // Load initial categories
       final categories = await _repository.getAllCategories();
       if (mounted) {
         setState(() {
@@ -48,6 +62,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _categoriesSubscription?.cancel();
     super.dispose();
   }
 
