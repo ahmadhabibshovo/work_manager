@@ -3,8 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../data/models/user_preferences.dart';
 import '../../../../core/services/service_locator.dart';
 import '../../../categories/data/models/category.dart';
-import '../../../categories/data/repositories/category_repository.dart';
 import '../widgets/settings_tile.dart';
+import '../../../../main.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -267,6 +267,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _updatePreferences(UserPreferences newPreferences) async {
+    final oldPreferences = _preferences;
     setState(() {
       _preferences = newPreferences;
     });
@@ -274,6 +275,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final service = await ServiceLocator.getPreferencesService();
       await service.saveUserPreferences(newPreferences);
+      
+      // Update theme if it changed
+      if (oldPreferences.themeMode != newPreferences.themeMode) {
+        PriorityManagerApp.appState?.updateThemeMode(newPreferences.themeMode);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

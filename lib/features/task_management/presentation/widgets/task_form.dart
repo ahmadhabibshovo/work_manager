@@ -12,6 +12,7 @@ class TaskForm extends StatefulWidget {
   final Task? task;
   final List<Category> availableCategories;
   final Function(Task) onSave;
+  @override
   final GlobalKey<TaskFormState> key;
   final Priority? defaultPriority;
   final String? defaultCategoryId;
