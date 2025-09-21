@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'core/services/service_locator.dart';
 import 'core/theme/app_theme.dart';
 import 'core/navigation/app_router.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ServiceLocator.initialize();
   runApp(const PriorityManagerApp());
 }
 

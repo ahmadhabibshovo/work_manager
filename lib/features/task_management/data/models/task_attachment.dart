@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
 
+import 'package:hive/hive.dart';
+
+part 'task_attachment.g.dart';
+
+@HiveType(typeId: 3)
 enum AttachmentType {
+  @HiveField(0)
+  file,
+  @HiveField(1)
   url,
+  @HiveField(2)
   image;
 
   String get displayName {
     switch (this) {
+      case AttachmentType.file:
+        return 'File';
       case AttachmentType.url:
         return 'URL';
       case AttachmentType.image:
@@ -15,6 +26,8 @@ enum AttachmentType {
 
   IconData get icon {
     switch (this) {
+      case AttachmentType.file:
+        return Icons.insert_drive_file;
       case AttachmentType.url:
         return Icons.link;
       case AttachmentType.image:
@@ -23,11 +36,17 @@ enum AttachmentType {
   }
 }
 
+@HiveType(typeId: 4)
 class TaskAttachment {
+  @HiveField(0)
   final String id;
+  @HiveField(1)
   final AttachmentType type;
+  @HiveField(2)
   final String url; // For URLs, this is the actual URL. For images, this is the file path/URI
+  @HiveField(3)
   final String? displayName; // Optional display name for the attachment
+  @HiveField(4)
   final DateTime createdAt;
 
   const TaskAttachment({

@@ -33,6 +33,10 @@ class PriorityBadge extends StatelessWidget {
         backgroundColor = AppTheme.lowPriorityColor.withOpacity(0.1);
         textColor = AppTheme.lowPriorityColor;
         break;
+      case Priority.urgent:
+        backgroundColor = AppTheme.urgentPriorityColor.withOpacity(0.1);
+        textColor = AppTheme.urgentPriorityColor;
+        break;
     }
 
     return Container(

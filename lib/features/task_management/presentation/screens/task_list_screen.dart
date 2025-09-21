@@ -3,68 +3,22 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../data/models/task.dart';
 import '../../data/models/priority.dart';
 import '../../../categories/data/models/category.dart';
+import '../../../../core/services/service_locator.dart';
 import '../widgets/task_card.dart';
 import 'edit_task_screen.dart';
 
 class TaskListScreen extends StatefulWidget {
   const TaskListScreen({super.key});
 
+  // Global key to access the state from outside
+  static final GlobalKey<TaskListScreenState> globalKey = GlobalKey<TaskListScreenState>();
+
   @override
-  State<TaskListScreen> createState() => _TaskListScreenState();
+  TaskListScreenState createState() => TaskListScreenState();
 }
 
-class _TaskListScreenState extends State<TaskListScreen> {
-  // Mock data for now - will be replaced with actual repository
-  List<Task> _tasks = [
-    Task(
-      id: '1',
-      title: 'Complete project documentation',
-      description: 'Write comprehensive documentation for the Flutter app',
-      priority: Priority.high,
-      isCompleted: false,
-      dueDate: DateTime.now().add(const Duration(days: 2)),
-      categoryId: '1', // Work category
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-    Task(
-      id: '2',
-      title: 'Review code changes',
-      description: 'Review pull requests and provide feedback',
-      priority: Priority.medium,
-      isCompleted: true,
-      dueDate: DateTime.now().subtract(const Duration(days: 1)),
-      categoryId: '1', // Work category
-      createdAt: DateTime.now().subtract(const Duration(days: 3)),
-    ),
-    Task(
-      id: '3',
-      title: 'Update dependencies',
-      description: 'Update all project dependencies to latest versions',
-      priority: Priority.low,
-      isCompleted: false,
-      categoryId: '1', // Work category
-      createdAt: DateTime.now().subtract(const Duration(days: 5)),
-    ),
-    Task(
-      id: '4',
-      title: 'Morning workout',
-      description: '30 minutes cardio and strength training',
-      priority: Priority.medium,
-      isCompleted: false,
-      categoryId: '3', // Health category
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-    Task(
-      id: '5',
-      title: 'Grocery shopping',
-      description: 'Buy groceries for the week',
-      priority: Priority.low,
-      isCompleted: false,
-      categoryId: '2', // Personal category
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-  ];
-
+class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObserver {
+  late Future<List<Task>> _tasksFuture;
   Priority _selectedFilter = Priority.medium;
   bool _showCompleted = true;
   String _selectedCategoryId = 'all'; // 'all' means "all categories"
@@ -98,9 +52,43 @@ class _TaskListScreenState extends State<TaskListScreen> {
   ];
 
   @override
-  Widget build(BuildContext context) {
-    final filteredTasks = _getFilteredTasks();
+  void initState() {
+    super.initState();
+    _loadTasks();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Refresh tasks when app comes back into focus
+      _refreshTasks();
+    }
+  }
+
+  void _loadTasks() {
+    _tasksFuture = ServiceLocator.getTaskRepository().then((repo) => repo.getAllTasks());
+  }
+
+  void _refreshTasks() {
+    setState(() {
+      _loadTasks();
+    });
+  }
+
+  // Public method to refresh tasks from outside
+  void refreshTasks() {
+    _refreshTasks();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tasks'),
@@ -238,71 +226,121 @@ class _TaskListScreenState extends State<TaskListScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Filter chips
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-            child: Row(
-              children: [
-                FilterChip(
-                  label: const Text('Pending'),
-                  selected: !_showCompleted,
-                  onSelected: (selected) => setState(() => _showCompleted = !selected),
-                ),
-                SizedBox(width: 8.w),
-                FilterChip(
-                  label: const Text('Completed'),
-                  selected: _showCompleted,
-                  onSelected: (selected) => setState(() => _showCompleted = selected),
-                ),
-              ],
-            ),
-          ),
+      body: FutureBuilder<List<Task>>(
+        future: _tasksFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-          // Task list
-          Expanded(
-            child: filteredTasks.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    itemCount: filteredTasks.length,
-                    itemBuilder: (context, index) {
-                      final task = filteredTasks[index];
-                      return TaskCard(
-                        task: task,
-                        onTap: () => _editTask(task),
-                        onToggleComplete: () => _toggleTaskComplete(task),
-                        onEdit: () => _editTask(task),
-                        onDelete: () => _deleteTask(task),
-                      );
-                    },
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 64.sp,
+                    color: Theme.of(context).colorScheme.error,
                   ),
-          ),
-        ],
+                  SizedBox(height: 16.h),
+                  Text(
+                    'Failed to load tasks',
+                    style: TextStyle(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  Text(
+                    snapshot.error.toString(),
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final tasks = snapshot.data ?? [];
+          final filteredTasks = _getFilteredTasks(tasks);
+
+          return Column(
+            children: [
+              // Filter chips
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                child: Row(
+                  children: [
+                    FilterChip(
+                      label: const Text('Pending'),
+                      selected: !_showCompleted,
+                      onSelected: (selected) => setState(() => _showCompleted = !selected),
+                    ),
+                    SizedBox(width: 8.w),
+                    FilterChip(
+                      label: const Text('Completed'),
+                      selected: _showCompleted,
+                      onSelected: (selected) => setState(() => _showCompleted = selected),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Task list
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    _refreshTasks();
+                  },
+                  child: filteredTasks.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          itemCount: filteredTasks.length,
+                          itemBuilder: (context, index) {
+                            final task = filteredTasks[index];
+                            return TaskCard(
+                              task: task,
+                              onTap: () => _editTask(task),
+                              onToggleComplete: () => _toggleTaskComplete(task),
+                              onEdit: () => _editTask(task),
+                              onDelete: () => _deleteTask(task),
+                            );
+                          },
+                        ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  List<Task> _getFilteredTasks() {
-    var tasks = _tasks;
+  List<Task> _getFilteredTasks(List<Task> tasks) {
+    var filteredTasks = tasks;
 
     // Filter by category
     if (_selectedCategoryId != 'all') {
-      tasks = tasks.where((task) => task.categoryId == _selectedCategoryId).toList();
+      filteredTasks = filteredTasks.where((task) => task.categoryId == _selectedCategoryId).toList();
     }
 
     // Filter by priority
     if (_selectedFilter != Priority.medium) { // medium represents "all"
-      tasks = tasks.where((task) => task.priority == _selectedFilter).toList();
+      filteredTasks = filteredTasks.where((task) => task.priority == _selectedFilter).toList();
     }
 
     // Filter by completion status
     if (!_showCompleted) {
-      tasks = tasks.where((task) => !task.isCompleted).toList();
+      filteredTasks = filteredTasks.where((task) => !task.isCompleted).toList();
     }
 
     // Sort by priority (high to low) then by due date
-    tasks.sort((a, b) {
+    filteredTasks.sort((a, b) {
       if (a.priority.value != b.priority.value) {
         return b.priority.value.compareTo(a.priority.value);
       }
@@ -312,7 +350,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
       return a.createdAt.compareTo(b.createdAt);
     });
 
-    return tasks;
+    return filteredTasks;
   }
 
   Widget _buildEmptyState() {
@@ -355,45 +393,57 @@ class _TaskListScreenState extends State<TaskListScreen> {
     );
 
     if (result != null && result is Task) {
-      setState(() {
-        final index = _tasks.indexWhere((t) => t.id == task.id);
-        if (index != -1) {
-          _tasks[index] = result;
+      try {
+        final repository = await ServiceLocator.getTaskRepository();
+        await repository.updateTask(result);
+        _refreshTasks();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to update task: $e'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
         }
-      });
+      }
     }
   }
 
-  void _toggleTaskComplete(Task task) {
-    setState(() {
-      final index = _tasks.indexWhere((t) => t.id == task.id);
-      if (index != -1) {
-        _tasks[index] = task.copyWith(
-          isCompleted: !task.isCompleted,
-          updatedAt: DateTime.now(),
+  void _toggleTaskComplete(Task task) async {
+    try {
+      final repository = await ServiceLocator.getTaskRepository();
+      final updatedTask = task.copyWith(
+        isCompleted: !task.isCompleted,
+        updatedAt: DateTime.now(),
+      );
+      await repository.updateTask(updatedTask);
+      _refreshTasks();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update task: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
         );
       }
-    });
+    }
   }
 
-  void _deleteTask(Task task) {
-    showDialog(
+  void _deleteTask(Task task) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Task'),
         content: Text('Are you sure you want to delete "${task.title}"?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              setState(() {
-                _tasks.removeWhere((t) => t.id == task.id);
-              });
-              Navigator.of(context).pop();
-            },
+            onPressed: () => Navigator.of(context).pop(true),
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.error,
             ),
@@ -402,5 +452,22 @@ class _TaskListScreenState extends State<TaskListScreen> {
         ],
       ),
     );
+
+    if (confirmed == true) {
+      try {
+        final repository = await ServiceLocator.getTaskRepository();
+        await repository.deleteTask(task.id);
+        _refreshTasks();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete task: $e'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
+      }
+    }
   }
 }

@@ -11,6 +11,7 @@ class AppTheme {
   static const Color highPriorityColor = Color(0xFFEF4444);
   static const Color mediumPriorityColor = Color(0xFFF59E0B);
   static const Color lowPriorityColor = Color(0xFF10B981);
+  static const Color urgentPriorityColor = Color(0xFF7C2D12);
 
   // Background Colors
   static const Color backgroundColor = Color(0xFFF8FAFC);
@@ -34,11 +35,9 @@ class AppTheme {
         primary: primaryColor,
         secondary: secondaryColor,
         surface: surfaceColor,
-        background: backgroundColor,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onSurface: textPrimaryColor,
-        onBackground: textPrimaryColor,
       ),
 
       // AppBar Theme
@@ -251,7 +250,6 @@ class AppTheme {
 
   static ThemeData get darkTheme {
     return ThemeData.dark().copyWith(
-      useMaterial3: true,
       primaryColor: primaryColor,
       scaffoldBackgroundColor: const Color(0xFF0F172A),
 
@@ -260,11 +258,9 @@ class AppTheme {
         primary: primaryColor,
         secondary: secondaryColor,
         surface: Color(0xFF1E293B),
-        background: Color(0xFF0F172A),
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onSurface: Colors.white,
-        onBackground: Colors.white,
       ),
 
       // AppBar Theme

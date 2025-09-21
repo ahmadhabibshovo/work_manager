@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 
+part 'priority.g.dart';
+
+@HiveType(typeId: 2)
 enum Priority {
+  @HiveField(0)
   low,
+  @HiveField(1)
   medium,
-  high;
+  @HiveField(2)
+  high,
+  @HiveField(3)
+  urgent;
 
   String get displayName {
     switch (this) {
@@ -13,6 +22,8 @@ enum Priority {
         return 'Medium';
       case Priority.high:
         return 'High';
+      case Priority.urgent:
+        return 'Urgent';
     }
   }
 
@@ -24,6 +35,8 @@ enum Priority {
         return Icons.remove;
       case Priority.high:
         return Icons.arrow_upward;
+      case Priority.urgent:
+        return Icons.warning;
     }
   }
 
@@ -35,6 +48,8 @@ enum Priority {
         return const Color(0xFFF59E0B); // Orange
       case Priority.high:
         return const Color(0xFFEF4444); // Red
+      case Priority.urgent:
+        return const Color(0xFF7C2D12); // Dark Red
     }
   }
 
@@ -46,6 +61,8 @@ enum Priority {
         return 2;
       case Priority.high:
         return 3;
+      case Priority.urgent:
+        return 4;
     }
   }
 
@@ -57,6 +74,8 @@ enum Priority {
         return Priority.medium;
       case 3:
         return Priority.high;
+      case 4:
+        return Priority.urgent;
       default:
         return Priority.medium;
     }
@@ -70,6 +89,8 @@ enum Priority {
         return Priority.medium;
       case 'high':
         return Priority.high;
+      case 'urgent':
+        return Priority.urgent;
       default:
         return Priority.medium;
     }
