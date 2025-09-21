@@ -21,7 +21,7 @@ class TaskListScreen extends StatefulWidget {
 class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObserver {
   Future<List<Task>>? _tasksFuture;
   String _selectedFilter = 'all'; // 'all' means "all priorities"
-  String _taskStatusFilter = 'all'; // 'all', 'pending', 'completed'
+  String _taskStatusFilter = 'pending'; // 'all', 'pending', 'completed'
   String _selectedCategoryId = 'all'; // 'all' means "all categories"
 
   // Dynamic categories loaded from database
@@ -382,60 +382,12 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
                                     },
                                   )
                                 : null;
-                            return Dismissible(
+                            return TaskCard(
                               key: ValueKey(task.id),
-                              direction: DismissDirection.horizontal,
-                              background: Container(
-                                alignment: Alignment.centerLeft,
-                                padding: EdgeInsets.only(left: 20.w),
-                                color: Theme.of(context).colorScheme.error,
-                                child: Icon(
-                                  Icons.delete,
-                                  color: Theme.of(context).colorScheme.onError,
-                                  size: 28.sp,
-                                ),
-                              ),
-                              secondaryBackground: Container(
-                                alignment: Alignment.centerRight,
-                                padding: EdgeInsets.only(right: 20.w),
-                                color: Theme.of(context).colorScheme.error,
-                                child: Icon(
-                                  Icons.delete,
-                                  color: Theme.of(context).colorScheme.onError,
-                                  size: 28.sp,
-                                ),
-                              ),
-                              confirmDismiss: (direction) async {
-                                return await showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return AlertDialog(
-                                      title: const Text('Delete Task'),
-                                      content: Text('Are you sure you want to delete "${task.title}"?'),
-                                      actions: <Widget>[
-                                        TextButton(
-                                          onPressed: () => Navigator.of(context).pop(false),
-                                          child: const Text('Cancel'),
-                                        ),
-                                        TextButton(
-                                          onPressed: () => Navigator.of(context).pop(true),
-                                          child: const Text('Delete'),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                              onDismissed: (direction) {
-                                _deleteTask(task);
-                              },
-                              child: TaskCard(
-                                key: ValueKey(task.id),
-                                task: task,
-                                category: taskCategory,
-                                onTap: () => _editTask(task),
-                                onToggleComplete: () => _toggleTaskComplete(task),
-                              ),
+                              task: task,
+                              category: taskCategory,
+                              onTap: () => _editTask(task),
+                              onToggleComplete: () => _toggleTaskComplete(task),
                             );
                           },
                           onReorder: (oldIndex, newIndex) async {
@@ -716,6 +668,9 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
           );
         }
       }
+    } else if (result == 'deleted') {
+      // Task was deleted, refresh the list
+      _refreshTasks();
     }
   }
 
@@ -733,23 +688,6 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to update task: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
-      }
-    }
-  }
-
-  void _deleteTask(Task task) async {
-    try {
-      final repository = await ServiceLocator.getTaskRepository();
-      await repository.deleteTask(task.id);
-      _refreshTasks();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete task: $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );

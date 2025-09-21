@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../data/models/task.dart';
 import '../../../categories/data/models/category.dart';
 import '../widgets/task_form.dart';
+import '../../../../core/services/service_locator.dart';
 
 class EditTaskScreen extends StatefulWidget {
   final Task task;
@@ -86,6 +87,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
             task: widget.task,
             availableCategories: _availableCategories,
             onSave: _onTaskSaved,
+            onDelete: _deleteTask,
           ),
         ),
       ),
@@ -95,6 +97,30 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   void _saveTask() {
     // Trigger the form's save method
     _formKey.currentState?.save();
+  }
+
+  void _deleteTask() async {
+    try {
+      final repository = await ServiceLocator.getTaskRepository();
+      await repository.deleteTask(widget.task.id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Task "${widget.task.title}" deleted successfully!'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      // Navigate back to the previous screen with deletion result
+      Navigator.of(context).pop('deleted');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Failed to delete task. Please try again.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _onTaskSaved(Task task) {
