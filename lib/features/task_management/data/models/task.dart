@@ -28,7 +28,7 @@ class Task {
   @HiveField(9)
   final List<TaskAttachment> attachments;
   @HiveField(10)
-  final int order;
+  final int? order;
 
   const Task({
     required this.id,
@@ -41,7 +41,7 @@ class Task {
     this.updatedAt,
     this.categoryId,
     this.attachments = const [],
-    this.order = 0,
+    this.order,
   });
 
   Task copyWith({

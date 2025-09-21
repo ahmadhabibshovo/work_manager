@@ -7,6 +7,7 @@ import 'core/services/sync_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/navigation/app_router.dart';
 import 'features/settings/data/models/user_preferences.dart';
+import 'features/auth/data/repositories/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,14 +75,21 @@ class _PriorityManagerAppState extends State<PriorityManagerApp> {
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
-        return MaterialApp(
-          title: 'Priority Manager',
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: _themeMode,
-          initialRoute: AppRouter.home,
-          routes: AppRouter.routes,
-          debugShowCheckedModeBanner: false,
+        return StreamBuilder(
+          stream: AuthService().authStateChanges,
+          builder: (context, snapshot) {
+            final isAuthenticated = snapshot.hasData && snapshot.data != null;
+
+            return MaterialApp(
+              title: 'Priority Manager',
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: _themeMode,
+              initialRoute: isAuthenticated ? '/' : '/login',
+              onGenerateRoute: AppRouter.generateRoute,
+              debugShowCheckedModeBanner: false,
+            );
+          },
         );
       },
     );

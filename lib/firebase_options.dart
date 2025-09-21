@@ -39,47 +39,48 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'YOUR_WEB_API_KEY',
-    appId: 'YOUR_WEB_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
-    authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
-    storageBucket: 'YOUR_PROJECT_ID.appspot.com',
-    measurementId: 'YOUR_MEASUREMENT_ID',
+    apiKey: 'AIzaSyDC47m1WDh1UKreF-tijsoMRc2o2w0jD6E',
+    appId: '1:469519052412:web:your_web_app_id', // Will need to be updated when web app is created
+    messagingSenderId: '469519052412',
+    projectId: 'work-priority-manager',
+    authDomain: 'work-priority-manager.firebaseapp.com',
+    storageBucket: 'work-priority-manager.firebasestorage.app',
+    measurementId: 'G-XXXXXXXXXX', // Will need to be updated when web app is created
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'YOUR_ANDROID_API_KEY',
-    appId: 'YOUR_ANDROID_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
+    apiKey: 'AIzaSyDC47m1WDh1UKreF-tijsoMRc2o2w0jD6E',
+    appId: '1:469519052412:android:e4e9dd95054bbc0bf723f9',
+    messagingSenderId: '469519052412',
+    projectId: 'work-priority-manager',
+    storageBucket: 'work-priority-manager.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'YOUR_IOS_API_KEY',
-    appId: 'YOUR_IOS_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
+    apiKey: 'AIzaSyDC47m1WDh1UKreF-tijsoMRc2o2w0jD6E',
+    appId: '1:469519052412:ios:your_ios_app_id', // Will need to be updated when iOS app is created
+    messagingSenderId: '469519052412',
+    projectId: 'work-priority-manager',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'YOUR_MACOS_API_KEY',
-    appId: 'YOUR_MACOS_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
+    apiKey: 'AIzaSyDC47m1WDh1UKreF-tijsoMRc2o2w0jD6E',
+    appId: '1:469519052412:macos:your_macos_app_id', // Will need to be updated when macOS app is created
+    messagingSenderId: '469519052412',
+    projectId: 'work-priority-manager',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'YOUR_WINDOWS_API_KEY',
-    appId: 'YOUR_WINDOWS_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
+    apiKey: 'AIzaSyDC47m1WDh1UKreF-tijsoMRc2o2w0jD6E',
+    appId: '1:469519052412:windows:your_windows_app_id', // Will need to be updated when Windows app is created
+    messagingSenderId: '469519052412',
+    projectId: 'work-priority-manager',
   );
 
   static const FirebaseOptions linux = FirebaseOptions(
-    apiKey: 'YOUR_LINUX_API_KEY',
-    appId: 'YOUR_LINUX_APP_ID',
-    messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_PROJECT_ID',
+    apiKey: 'AIzaSyDC47m1WDh1UKreF-tijsoMRc2o2w0jD6E',
+    appId: '1:469519052412:linux:your_linux_app_id', // Will need to be updated when Linux app is created
+    messagingSenderId: '469519052412',
+    projectId: 'work-priority-manager',
   );
 }

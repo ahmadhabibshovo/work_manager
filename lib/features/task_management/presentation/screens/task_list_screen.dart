@@ -516,10 +516,10 @@ class TaskListScreenState extends State<TaskListScreen> with WidgetsBindingObser
 
     // Always sort by priority (Urgent > High > Medium > Low) then by due date
     // Manual order is only used when no filters are applied AND tasks haven't been reordered by priority changes
-    final hasManualOrder = filteredTasks.any((task) => task.order > 0) && !_hasPriorityBeenAdjusted;
+    final hasManualOrder = filteredTasks.any((task) => (task.order ?? 0) > 0) && !_hasPriorityBeenAdjusted;
 
     if (_selectedFilter == 'all' && _taskStatusFilter == 'all' && _selectedCategoryId == 'all' && hasManualOrder) {
-      filteredTasks.sort((a, b) => a.order.compareTo(b.order));
+      filteredTasks.sort((a, b) => (a.order ?? 0).compareTo(b.order ?? 0));
     } else {
       filteredTasks.sort((a, b) {
         // First sort by priority (higher priority first)

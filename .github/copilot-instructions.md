@@ -1,7 +1,7 @@
 # AI Agent Instructions for Priority Manager Flutter App
 
 ## Project Overview
-Priority Manager is a cross-platform Flutter app for managing personal and professional tasks with priority levels. Built with responsive design using flutter_screenutil.
+Priority Manager is a cross-platform Flutter app for managing personal and professional tasks with priority levels. Built with responsive design using flutter_screenutil. **Primary focus: Android development and deployment.**
 
 ## Architecture Patterns
 
@@ -44,26 +44,49 @@ ScreenUtilInit(
 
 ## Development Workflows
 
-### Essential Commands
+### Essential Commands (Android Focus)
 ```bash
+# Android development (PRIMARY PLATFORM)
+flutter run -d android          # Run on Android emulator/device
+flutter build apk --release     # Build release APK for Android
+flutter build appbundle --release  # Build Android App Bundle (AAB)
+flutter install                 # Install app on connected Android device
+
 # Multi-platform development
-flutter run -d android    # Android emulator/device
-flutter run -d chrome     # Web browser
-flutter run -d linux      # Linux desktop
+flutter run -d chrome           # Web browser
+flutter run -d linux            # Linux desktop
 
 # Code quality (run these frequently)
-flutter analyze           # Static analysis
-flutter format .          # Code formatting
-flutter fix --apply       # Auto-fix issues
+flutter analyze                 # Static analysis
+flutter format .                # Code formatting
+flutter fix --apply             # Auto-fix issues
 
 # Testing
-flutter test --coverage   # Run tests with coverage
+flutter test --coverage         # Run tests with coverage
+```
+
+### Android-Specific Development
+```bash
+# Device management
+flutter devices                  # List connected devices
+adb devices                      # List Android devices via ADB
+flutter run -d emulator-5554     # Run on specific emulator
+
+# Build variants
+flutter build apk --debug        # Debug APK
+flutter build apk --profile      # Profile APK for performance testing
+flutter build apk --release      # Release APK for production
+
+# Android Studio integration
+flutter build apk --release && flutter install  # Build and install in one command
 ```
 
 ### Platform-Specific Builds
 ```bash
-# Android (namespace: com.work_manager.app.work_manager)
-flutter build apk --release
+# Android (PRIMARY - namespace: com.work_manager.app.work_manager)
+flutter build apk --release                    # Release APK
+flutter build appbundle --release              # Play Store AAB
+flutter build apk --debug                      # Debug APK for testing
 
 # Web (standard PWA setup)
 flutter build web
@@ -168,14 +191,47 @@ testWidgets('Feature test', (WidgetTester tester) async {
 
 ## Platform Configuration
 
-### Android (android/app/build.gradle.kts)
-- Namespace: `com.work_manager.app.work_manager`
-- JVM Target: Java 11
-- Min SDK: Flutter default (API 21+)
+### Android (PRIMARY PLATFORM - android/app/build.gradle.kts)
+- **Namespace**: `com.work_manager.app.work_manager`
+- **JVM Target**: Java 11
+- **Min SDK**: Flutter default (API 21+)
+- **Target SDK**: Latest stable Android API
+- **Build Types**: debug, profile, release
+- **Signing**: Configure signing config for release builds
+- **Permissions**: Internet, network state, storage (for Hive)
+
+### Android Build Configuration
+```kotlin
+// android/app/build.gradle.kts key settings
+android {
+    namespace = "com.work_manager.app.work_manager"
+    compileSdk = 34  // Latest stable
+    
+    defaultConfig {
+        minSdk = 21
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0.0"
+    }
+    
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+        }
+    }
+}
+```
 
 ### Web (web/)
 - Standard Flutter web with PWA manifest
 - Icons in `web/icons/` directory
+
+### Firebase Android Configuration
+- **google-services.json**: Place in `android/app/` directory
+- **App ID**: `1:469519052412:android:e4e9dd95054bbc0bf723f9`
+- **Project ID**: `work-priority-manager`
+- **API Key**: Configured in `lib/firebase_options.dart`
 
 ## Common Patterns & Gotchas
 
@@ -198,6 +254,38 @@ void _updateState() {
 - Run `flutter clean` if platform-specific build issues occur
 - Use `flutter doctor` to diagnose environment problems
 - Ensure Android Studio/VS Code has Flutter extensions
+- For Android build issues, check `android/app/build.gradle.kts` configuration
+- Verify Firebase configuration in `lib/firebase_options.dart`
+
+## Android Development Best Practices
+
+### Performance Optimization
+- Use `flutter build apk --profile` for performance testing
+- Monitor app size with `flutter build apk --analyze-size`
+- Optimize images and assets for Android deployment
+- Test on various Android devices and API levels
+
+### Testing on Android
+```bash
+# Test on physical Android device
+flutter run -d android
+
+# Test on Android emulator
+flutter emulators --launch <emulator_name>
+flutter run -d <emulator_id>
+
+# Build and install release APK
+flutter build apk --release
+flutter install
+```
+
+### Android Deployment Checklist
+- [ ] Update version code and name in `android/app/build.gradle.kts`
+- [ ] Configure signing configuration for release builds
+- [ ] Test app on multiple Android devices
+- [ ] Verify Firebase configuration works in production
+- [ ] Check app permissions and manifest
+- [ ] Optimize app size and performance
 
 ## Key Reference Files
 - `lib/main.dart` - ScreenUtilInit setup and app structure
@@ -207,10 +295,14 @@ void _updateState() {
 - `test/widget_test.dart` - Testing patterns
 
 ## Development Priorities
-1. Implement task CRUD operations with priority levels
-2. Add local storage for task persistence (Hive)
-3. Create responsive task list and detail views
-4. Add categories (Personal vs Professional)
-5. Implement Firebase offline-first sync (automatic + manual)
-6. Implement due dates and notifications</content>
+1. **✅ COMPLETED**: Implement task CRUD operations with priority levels
+2. **✅ COMPLETED**: Add local storage for task persistence (Hive)
+3. **✅ COMPLETED**: Create responsive task list and detail views
+4. **✅ COMPLETED**: Add categories (Personal vs Professional)
+5. **✅ COMPLETED**: Implement Firebase offline-first sync (automatic + manual)
+6. **🔄 IN PROGRESS**: Implement due dates and notifications
+7. **📱 ANDROID FOCUS**: Optimize Android performance and build process
+8. **🚀 DEPLOYMENT**: Prepare for Android Play Store release
+9. **🔧 TESTING**: Add comprehensive unit and integration tests
+10. **📊 MONITORING**: Implement crash reporting and analytics</content>
 <parameter name="filePath">/home/habib/dev/APPS/work_manager/.github/copilot-instructions.md
