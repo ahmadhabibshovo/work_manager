@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../data/models/user_preferences.dart';
 import '../../../../core/services/service_locator.dart';
+import '../../../categories/data/models/category.dart';
+import '../../../categories/data/repositories/category_repository.dart';
 import '../widgets/settings_tile.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -14,11 +16,31 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   UserPreferences _preferences = const UserPreferences();
   bool _isLoading = true;
+  List<Category> _availableCategories = [];
 
   @override
   void initState() {
     super.initState();
     _loadPreferences();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final repository = await ServiceLocator.getCategoryRepository();
+      final categories = await repository.getAllCategories();
+      if (mounted) {
+        setState(() {
+          _availableCategories = categories;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load categories: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _loadPreferences() async {
@@ -383,50 +405,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Navigator.of(context).pop();
                 },
               ),
-              RadioListTile<String>(
-                title: const Text('Work'),
-                value: '1',
-                groupValue: _preferences.defaultCategoryId,
-                onChanged: (value) {
-                  if (value != null) {
-                    _updatePreferences(_preferences.copyWith(defaultCategoryId: value));
-                    Navigator.of(context).pop();
-                  }
-                },
-              ),
-              RadioListTile<String>(
-                title: const Text('Personal'),
-                value: '2',
-                groupValue: _preferences.defaultCategoryId,
-                onChanged: (value) {
-                  if (value != null) {
-                    _updatePreferences(_preferences.copyWith(defaultCategoryId: value));
-                    Navigator.of(context).pop();
-                  }
-                },
-              ),
-              RadioListTile<String>(
-                title: const Text('Health'),
-                value: '3',
-                groupValue: _preferences.defaultCategoryId,
-                onChanged: (value) {
-                  if (value != null) {
-                    _updatePreferences(_preferences.copyWith(defaultCategoryId: value));
-                    Navigator.of(context).pop();
-                  }
-                },
-              ),
-              RadioListTile<String>(
-                title: const Text('Education'),
-                value: '4',
-                groupValue: _preferences.defaultCategoryId,
-                onChanged: (value) {
-                  if (value != null) {
-                    _updatePreferences(_preferences.copyWith(defaultCategoryId: value));
-                    Navigator.of(context).pop();
-                  }
-                },
-              ),
+              ..._availableCategories.map((category) {
+                return RadioListTile<String>(
+                  title: Text(category.name),
+                  value: category.id,
+                  groupValue: _preferences.defaultCategoryId,
+                  onChanged: (value) {
+                    if (value != null) {
+                      _updatePreferences(_preferences.copyWith(defaultCategoryId: value));
+                      Navigator.of(context).pop();
+                    }
+                  },
+                );
+              }),
             ],
           ),
         ),

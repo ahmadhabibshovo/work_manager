@@ -15,44 +15,40 @@ class CreateTaskScreen extends StatefulWidget {
 }
 
 class _CreateTaskScreenState extends State<CreateTaskScreen> {
-  // Mock categories - replace with actual data from repository
-  final List<Category> _availableCategories = [
-    Category(
-      id: '1',
-      name: 'Work',
-      type: CategoryType.work,
-      createdAt: DateTime.now(),
-    ),
-    Category(
-      id: '2',
-      name: 'Personal',
-      type: CategoryType.personal,
-      createdAt: DateTime.now(),
-    ),
-    Category(
-      id: '3',
-      name: 'Health',
-      type: CategoryType.health,
-      createdAt: DateTime.now(),
-    ),
-    Category(
-      id: '4',
-      name: 'Education',
-      type: CategoryType.education,
-      createdAt: DateTime.now(),
-    ),
-  ];
-
+  // Remove hardcoded categories - will load from repository
+  List<Category> _availableCategories = [];
   bool _isSaving = false;
   final GlobalKey<TaskFormState> _formKey = GlobalKey<TaskFormState>();
   UserPreferences _preferences = const UserPreferences();
   bool _isLoadingPreferences = true;
   Priority? _defaultPriority;
+  bool _isLoadingCategories = true;
 
   @override
   void initState() {
     super.initState();
     _loadPreferences();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final repository = await ServiceLocator.getCategoryRepository();
+      final categories = await repository.getAllCategories();
+      if (mounted) {
+        setState(() {
+          _availableCategories = categories;
+          _isLoadingCategories = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingCategories = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load categories: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _loadPreferences() async {
@@ -93,7 +89,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   }
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingPreferences) {
+    if (_isLoadingPreferences || _isLoadingCategories) {
       return Scaffold(
         appBar: AppBar(title: const Text('Create Task')),
         body: const Center(child: CircularProgressIndicator()),
@@ -153,6 +149,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             availableCategories: _availableCategories,
             onSave: _onTaskSaved,
             defaultPriority: _defaultPriority,
+            defaultCategoryId: _preferences.defaultCategoryId,
           ),
         ),
       ),

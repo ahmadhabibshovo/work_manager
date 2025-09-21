@@ -14,6 +14,7 @@ class TaskForm extends StatefulWidget {
   final Function(Task) onSave;
   final GlobalKey<TaskFormState> key;
   final Priority? defaultPriority;
+  final String? defaultCategoryId;
 
   const TaskForm({
     required this.key,
@@ -21,6 +22,7 @@ class TaskForm extends StatefulWidget {
     required this.availableCategories,
     required this.onSave,
     this.defaultPriority,
+    this.defaultCategoryId,
   }) : super(key: key);
 
   @override
@@ -48,7 +50,7 @@ class TaskFormState extends State<TaskForm> {
     _selectedPriority = widget.task?.priority ?? widget.defaultPriority ?? Priority.medium;
     _selectedDueDate = widget.task?.dueDate;
     _isCompleted = widget.task?.isCompleted ?? false;
-    _selectedCategoryId = widget.task?.categoryId;
+    _selectedCategoryId = widget.task?.categoryId ?? widget.defaultCategoryId;
     _attachments = List.from(widget.task?.attachments ?? []);
   }
 
