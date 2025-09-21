@@ -37,7 +37,10 @@ class UserRepository {
   Future<void> updateUser(String userId, Map<String, dynamic> updates) async {
     try {
       updates['updatedAt'] = DateTime.now().toIso8601String();
-      await _firestore.collection('users').doc(userId).update(updates);
+      await _firestore.collection('users').doc(userId).set(
+        updates,
+        SetOptions(merge: true),
+      );
     } catch (e) {
       throw Exception('Failed to update user: $e');
     }

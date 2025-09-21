@@ -39,9 +39,9 @@ dependencies:
   image_picker: ^1.0.7
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  firebase_core: ^2.24.2
-  cloud_firestore: ^4.14.0
-  firebase_auth: ^4.16.0
+  firebase_core: ^2.30.0
+  cloud_firestore: ^4.15.0
+  firebase_auth: ^4.17.0
   connectivity_plus: ^7.0.0
 
 dev_dependencies:

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../data/repositories/auth_service.dart';
+import '../../../../core/services/sync_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -38,6 +39,15 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+
+      // Download user's existing data from Firestore after successful login
+      try {
+        await SyncService().downloadAllData();
+        print('✅ Login: User data downloaded successfully');
+      } catch (syncError) {
+        print('⚠️ Login: Failed to download user data: $syncError');
+        // Don't fail the login if sync fails, just log the error
+      }
 
       // Navigate to main app after successful login
       if (mounted) {

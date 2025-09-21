@@ -65,13 +65,15 @@ class AuthService {
 
       final user = User.fromFirebase(userCredential.user!);
 
-      // Update user document in Firestore (in case of any changes)
-      await _firestore.collection('users').doc(user.id).update({
+      // Create or update user document in Firestore
+      await _firestore.collection('users').doc(user.id).set({
+        'id': user.id,
         'email': user.email,
         'displayName': user.displayName,
         'photoUrl': user.photoUrl,
+        'createdAt': user.createdAt.toIso8601String(),
         'updatedAt': DateTime.now().toIso8601String(),
-      });
+      }, SetOptions(merge: true));
 
       return user;
     } on firebase_auth.FirebaseAuthException catch (e) {
@@ -126,7 +128,10 @@ class AuthService {
       if (displayName != null) updates['displayName'] = displayName;
       if (photoUrl != null) updates['photoUrl'] = photoUrl;
 
-      await _firestore.collection('users').doc(user.uid).update(updates);
+      await _firestore.collection('users').doc(user.uid).set(
+        updates,
+        SetOptions(merge: true),
+      );
     } catch (e) {
       throw Exception('Failed to update profile: $e');
     }

@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../features/task_management/data/models/task.dart';
+import '../../features/task_management/data/models/priority.dart';
 import '../../features/categories/data/models/category.dart';
 import '../../features/auth/data/repositories/auth_service.dart';
 
@@ -43,8 +45,16 @@ class SyncService {
     print('🔄 SyncService: Initialization complete');
   }
 
-  Future<void> dispose() async {
-    await _connectivitySubscription?.cancel();
+  Future<void> downloadAllData() async {
+    try {
+      print('🔄 SyncService: Starting full data download...');
+      await downloadTasks();
+      await downloadCategories();
+      print('🔄 SyncService: Full data download completed');
+    } catch (e) {
+      print('❌ SyncService: Data download failed: $e');
+      rethrow;
+    }
   }
 
   Future<void> manualSync() async {
@@ -62,6 +72,9 @@ class SyncService {
   Future<void> _syncAllData() async {
     try {
       print('🔄 SyncService: Starting full data sync...');
+      // First download any new data from Firestore
+      await downloadAllData();
+      // Then upload local data to Firestore
       await _syncTasks();
       await _syncCategories();
       print('🔄 SyncService: Full data sync completed');
@@ -144,10 +157,137 @@ class SyncService {
 
   // Future methods for downloading from Firestore (to be implemented)
   Future<void> downloadTasks() async {
-    // TODO: Implement downloading tasks from Firestore and merging with local
+    print('🔄 SyncService: Downloading tasks from Firestore...');
+    
+    // Get current user ID
+    final currentUser = _authService.currentUser;
+    if (currentUser == null) {
+      print('❌ SyncService: No authenticated user, skipping task download');
+      return;
+    }
+    final userId = currentUser.id;
+
+    try {
+      final taskBox = await Hive.openBox<Task>('tasks');
+      final tasksRef = _firestore.collection('users').doc(userId).collection('tasks');
+      final querySnapshot = await tasksRef.get();
+
+      print('🔄 SyncService: Found ${querySnapshot.docs.length} tasks in Firestore');
+
+      int downloadedCount = 0;
+      int updatedCount = 0;
+
+      for (final doc in querySnapshot.docs) {
+        final data = doc.data();
+        
+        // Convert Firestore data to Task object
+        final firestoreTask = Task(
+          id: data['id'] as String,
+          title: data['title'] as String,
+          description: data['description'] as String?,
+          priority: Priority.values[data['priority'] as int? ?? 0],
+          isCompleted: data['isCompleted'] as bool? ?? false,
+          dueDate: data['dueDate'] != null ? DateTime.parse(data['dueDate'] as String) : null,
+          createdAt: DateTime.parse(data['createdAt'] as String),
+          updatedAt: data['updatedAt'] != null ? DateTime.parse(data['updatedAt'] as String) : null,
+          categoryId: data['categoryId'] as String?,
+          attachments: [], // TODO: Handle attachments
+          order: data['order'] as int?,
+        );
+
+        // Check if task exists locally
+        final existingTask = taskBox.get(firestoreTask.id);
+        
+        if (existingTask == null) {
+          // Task doesn't exist locally, add it
+          await taskBox.put(firestoreTask.id, firestoreTask);
+          downloadedCount++;
+          print('🔄 SyncService: Downloaded new task: ${firestoreTask.title}');
+        } else {
+          // Task exists locally, check if Firestore version is newer
+          final localUpdated = existingTask.updatedAt ?? existingTask.createdAt;
+          final firestoreUpdated = firestoreTask.updatedAt ?? firestoreTask.createdAt;
+          
+          if (firestoreUpdated.isAfter(localUpdated)) {
+            // Firestore version is newer, update local
+            await taskBox.put(firestoreTask.id, firestoreTask);
+            updatedCount++;
+            print('🔄 SyncService: Updated existing task: ${firestoreTask.title}');
+          }
+        }
+      }
+
+      print('🔄 SyncService: Task download completed - Downloaded: $downloadedCount, Updated: $updatedCount');
+    } catch (e) {
+      print('❌ SyncService: Task download failed: $e');
+      rethrow;
+    }
   }
 
   Future<void> downloadCategories() async {
-    // TODO: Implement downloading categories from Firestore and merging with local
+    print('🔄 SyncService: Downloading categories from Firestore...');
+    
+    // Get current user ID
+    final currentUser = _authService.currentUser;
+    if (currentUser == null) {
+      print('❌ SyncService: No authenticated user, skipping category download');
+      return;
+    }
+    final userId = currentUser.id;
+
+    try {
+      final categoryBox = await Hive.openBox<Category>('categories');
+      final categoriesRef = _firestore.collection('users').doc(userId).collection('categories');
+      final querySnapshot = await categoriesRef.get();
+
+      print('🔄 SyncService: Found ${querySnapshot.docs.length} categories in Firestore');
+
+      int downloadedCount = 0;
+      int updatedCount = 0;
+
+      for (final doc in querySnapshot.docs) {
+        final data = doc.data();
+        
+        // Convert Firestore data to Category object
+        final firestoreCategory = Category(
+          id: data['id'] as String,
+          name: data['name'] as String,
+          type: CategoryType.values.firstWhere(
+            (type) => type.name == data['type'],
+            orElse: () => CategoryType.other,
+          ),
+          customColor: data['customColor'] != null ? Color(data['customColor'] as int) : null,
+          description: data['description'] as String?,
+          createdAt: DateTime.parse(data['createdAt'] as String),
+          updatedAt: data['updatedAt'] != null ? DateTime.parse(data['updatedAt'] as String) : null,
+        );
+
+        // Check if category exists locally
+        final existingCategory = categoryBox.get(firestoreCategory.id);
+        
+        if (existingCategory == null) {
+          // Category doesn't exist locally, add it
+          await categoryBox.put(firestoreCategory.id, firestoreCategory);
+          downloadedCount++;
+          print('🔄 SyncService: Downloaded new category: ${firestoreCategory.name}');
+        } else {
+          // Category exists locally, check if Firestore version is newer
+          final localUpdated = existingCategory.updatedAt ?? existingCategory.createdAt;
+          final firestoreUpdated = firestoreCategory.updatedAt ?? firestoreCategory.createdAt;
+          
+          if (firestoreUpdated.isAfter(localUpdated)) {
+            // Firestore version is newer, update local
+            await categoryBox.put(firestoreCategory.id, firestoreCategory);
+            updatedCount++;
+            print('🔄 SyncService: Updated existing category: ${firestoreCategory.name}');
+          }
+        }
+      }
+
+      print('🔄 SyncService: Category download completed - Downloaded: $downloadedCount, Updated: $updatedCount');
+    } catch (e) {
+      print('❌ SyncService: Category download failed: $e');
+      rethrow;
+    }
   }
 }
