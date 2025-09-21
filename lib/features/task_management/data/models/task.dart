@@ -1,17 +1,31 @@
 import 'package:flutter/foundation.dart';
+import 'package:hive/hive.dart';
 import 'priority.dart';
 import 'task_attachment.dart';
 
+part 'task.g.dart';
+
+@HiveType(typeId: 5)
 class Task {
+  @HiveField(0)
   final String id;
+  @HiveField(1)
   final String title;
+  @HiveField(2)
   final String? description;
+  @HiveField(3)
   final Priority priority;
+  @HiveField(4)
   final bool isCompleted;
+  @HiveField(5)
   final DateTime? dueDate;
+  @HiveField(6)
   final DateTime createdAt;
+  @HiveField(7)
   final DateTime? updatedAt;
+  @HiveField(8)
   final String? categoryId;
+  @HiveField(9)
   final List<TaskAttachment> attachments;
 
   const Task({

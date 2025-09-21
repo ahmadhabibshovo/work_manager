@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../data/models/user_preferences.dart';
+import '../../../../core/services/service_locator.dart';
+import '../../../categories/data/models/category.dart';
 import '../widgets/settings_tile.dart';
+import '../../../../main.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -11,11 +14,68 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // Mock preferences for now - will be replaced with actual service
   UserPreferences _preferences = const UserPreferences();
+  bool _isLoading = true;
+  List<Category> _availableCategories = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final repository = await ServiceLocator.getCategoryRepository();
+      final categories = await repository.getAllCategories();
+      if (mounted) {
+        setState(() {
+          _availableCategories = categories;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load categories: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadPreferences() async {
+    try {
+      final service = await ServiceLocator.getPreferencesService();
+      final preferences = await service.getUserPreferences();
+      if (mounted) {
+        setState(() {
+          _preferences = preferences;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load preferences: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Settings'),
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
@@ -130,6 +190,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 onTap: _showPriorityDialog,
               ),
+              SettingsTile(
+                title: 'Default Category',
+                subtitle: _getCategoryDisplayName(_preferences.defaultCategoryId),
+                leading: Icon(
+                  Icons.category,
+                  size: 20.sp,
+                ),
+                onTap: _showCategoryDialog,
+              ),
             ],
           ),
 
@@ -197,11 +266,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _updatePreferences(UserPreferences newPreferences) {
+  void _updatePreferences(UserPreferences newPreferences) async {
+    final oldPreferences = _preferences;
     setState(() {
       _preferences = newPreferences;
     });
-    // TODO: Save to persistent storage
+    
+    try {
+      final service = await ServiceLocator.getPreferencesService();
+      await service.saveUserPreferences(newPreferences);
+      
+      // Update theme if it changed
+      if (oldPreferences.themeMode != newPreferences.themeMode) {
+        PriorityManagerApp.appState?.updateThemeMode(newPreferences.themeMode);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save preferences: $e')),
+        );
+      }
+    }
   }
 
   void _showThemeDialog() {
@@ -264,7 +349,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text('Default Priority'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [1, 2, 3].map((priority) {
+          children: [1, 2, 3, 4].map((priority) {
             return RadioListTile<int>(
               title: Text(_getPriorityDisplayName(priority)),
               value: priority,
@@ -307,6 +392,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showCategoryDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Default Category'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              RadioListTile<String?>(
+                title: const Text('None'),
+                value: null,
+                groupValue: _preferences.defaultCategoryId,
+                onChanged: (value) {
+                  _updatePreferences(_preferences.copyWith(defaultCategoryId: value));
+                  Navigator.of(context).pop();
+                },
+              ),
+              ..._availableCategories.map((category) {
+                return RadioListTile<String>(
+                  title: Text(category.name),
+                  value: category.id,
+                  groupValue: _preferences.defaultCategoryId,
+                  onChanged: (value) {
+                    if (value != null) {
+                      _updatePreferences(_preferences.copyWith(defaultCategoryId: value));
+                      Navigator.of(context).pop();
+                    }
+                  },
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _resetToDefaults() {
     showDialog(
       context: context,
@@ -319,9 +443,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              _updatePreferences(const UserPreferences());
-              Navigator.of(context).pop();
+            onPressed: () async {
+              try {
+                final service = await ServiceLocator.getPreferencesService();
+                await service.resetToDefaults();
+                await _loadPreferences();
+                if (mounted) {
+                  Navigator.of(context).pop();
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to reset preferences: $e')),
+                  );
+                }
+              }
             },
             style: TextButton.styleFrom(
               foregroundColor: Theme.of(context).colorScheme.error,
@@ -355,8 +491,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return 'Medium';
       case 3:
         return 'High';
+      case 4:
+        return 'Urgent';
       default:
         return 'Medium';
+    }
+  }
+
+  String _getCategoryDisplayName(String? categoryId) {
+    if (categoryId == null) {
+      return 'None';
+    }
+    
+    // For now, return a generic name. In a real app, you'd look up the category name
+    // from the category repository using the categoryId
+    switch (categoryId) {
+      case '1':
+        return 'Work';
+      case '2':
+        return 'Personal';
+      case '3':
+        return 'Health';
+      case '4':
+        return 'Education';
+      default:
+        return 'Custom Category';
     }
   }
 }

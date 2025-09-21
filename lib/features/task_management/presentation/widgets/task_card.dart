@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../data/models/task.dart';
+import '../../../categories/data/models/category.dart';
 import 'priority_badge.dart';
 
 class TaskCard extends StatelessWidget {
   final Task task;
+  final Category? category;
   final VoidCallback? onTap;
   final VoidCallback? onToggleComplete;
   final VoidCallback? onEdit;
@@ -13,6 +15,7 @@ class TaskCard extends StatelessWidget {
   const TaskCard({
     super.key,
     required this.task,
+    this.category,
     this.onTap,
     this.onToggleComplete,
     this.onEdit,
@@ -72,6 +75,39 @@ class TaskCard extends StatelessWidget {
               Row(
                 children: [
                   PriorityBadge(priority: task.priority),
+                  if (category != null) ...[
+                    SizedBox(width: 8.w),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                      decoration: BoxDecoration(
+                        color: category!.color.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8.r),
+                        border: Border.all(
+                          color: category!.color.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            category!.icon,
+                            size: 12.sp,
+                            color: category!.color,
+                          ),
+                          SizedBox(width: 4.w),
+                          Text(
+                            category!.name,
+                            style: TextStyle(
+                              fontSize: 10.sp,
+                              fontWeight: FontWeight.w500,
+                              color: category!.color,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   if (task.dueDate != null) ...[
                     SizedBox(width: 8.w),
                     Icon(

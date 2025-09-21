@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 
+part 'category.g.dart';
+
+@HiveType(typeId: 0)
 enum CategoryType {
+  @HiveField(0)
   personal,
+  @HiveField(1)
   work,
+  @HiveField(2)
   health,
+  @HiveField(3)
   finance,
+  @HiveField(4)
   education,
+  @HiveField(5)
   other;
 
   String get displayName {
@@ -60,24 +70,66 @@ enum CategoryType {
   }
 }
 
+@HiveType(typeId: 1)
 class Category {
+  @HiveField(0)
   final String id;
+  @HiveField(1)
   final String name;
+  @HiveField(2)
   final CategoryType type;
-  final Color? customColor;
+  @HiveField(3)
+  final int? customColorValue; // Store color as int
+  @HiveField(4)
   final String? description;
+  @HiveField(5)
   final DateTime createdAt;
+  @HiveField(6)
   final DateTime? updatedAt;
 
   const Category({
     required this.id,
     required this.name,
     required this.type,
-    this.customColor,
+    Color? customColor,
+    this.description,
+    required this.createdAt,
+    this.updatedAt,
+  }) : customColorValue = null;
+
+  // Factory constructor for creating from stored data
+  factory Category.fromStored({
+    required String id,
+    required String name,
+    required CategoryType type,
+    int? customColorValue,
+    String? description,
+    required DateTime createdAt,
+    DateTime? updatedAt,
+  }) {
+    return Category._internal(
+      id: id,
+      name: name,
+      type: type,
+      customColorValue: customColorValue,
+      description: description,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
+
+  const Category._internal({
+    required this.id,
+    required this.name,
+    required this.type,
+    this.customColorValue,
     this.description,
     required this.createdAt,
     this.updatedAt,
   });
+
+  // Getter to convert int back to Color
+  Color? get customColor => customColorValue != null ? Color(customColorValue!) : null;
 
   Color get color => customColor ?? type.color;
 
@@ -92,11 +144,11 @@ class Category {
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
-    return Category(
+    return Category._internal(
       id: id ?? this.id,
       name: name ?? this.name,
       type: type ?? this.type,
-      customColor: customColor ?? this.customColor,
+      customColorValue: customColor?.value ?? customColorValue,
       description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

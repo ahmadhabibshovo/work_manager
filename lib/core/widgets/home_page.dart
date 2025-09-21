@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../features/task_management/presentation/task_management_page.dart';
+import '../../features/task_management/presentation/screens/task_list_screen.dart';
 import '../../features/categories/presentation/categories_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/task_management/presentation/screens/create_task_screen.dart';
@@ -14,8 +14,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _pages = <Widget>[
-    TaskManagementPage(),
+  static final List<Widget> _pages = <Widget>[
+    TaskListScreen(key: TaskListScreen.globalKey),
     CategoriesPage(),
     SettingsPage(),
   ];
@@ -61,10 +61,9 @@ class _HomePageState extends State<HomePage> {
                   ),
                 );
 
-                // Handle the result if needed (e.g., refresh the task list)
+                // Refresh the task list if a task was created
                 if (result != null) {
-                  // Task was created successfully
-                  // You could refresh the task list here if needed
+                  TaskListScreen.globalKey.currentState?.refreshTasks();
                 }
               },
               child: const Icon(Icons.add),

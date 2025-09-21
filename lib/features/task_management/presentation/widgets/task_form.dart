@@ -12,19 +12,25 @@ class TaskForm extends StatefulWidget {
   final Task? task;
   final List<Category> availableCategories;
   final Function(Task) onSave;
+  @override
+  final GlobalKey<TaskFormState> key;
+  final Priority? defaultPriority;
+  final String? defaultCategoryId;
 
   const TaskForm({
-    super.key,
+    required this.key,
     this.task,
     required this.availableCategories,
     required this.onSave,
-  });
+    this.defaultPriority,
+    this.defaultCategoryId,
+  }) : super(key: key);
 
   @override
-  State<TaskForm> createState() => _TaskFormState();
+  State<TaskForm> createState() => TaskFormState();
 }
 
-class _TaskFormState extends State<TaskForm> {
+class TaskFormState extends State<TaskForm> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
   late TextEditingController _descriptionController;
@@ -42,10 +48,10 @@ class _TaskFormState extends State<TaskForm> {
     _titleController = TextEditingController(text: widget.task?.title ?? '');
     _descriptionController = TextEditingController(text: widget.task?.description ?? '');
     _urlController = TextEditingController();
-    _selectedPriority = widget.task?.priority ?? Priority.medium;
+    _selectedPriority = widget.task?.priority ?? widget.defaultPriority ?? Priority.medium;
     _selectedDueDate = widget.task?.dueDate;
     _isCompleted = widget.task?.isCompleted ?? false;
-    _selectedCategoryId = widget.task?.categoryId;
+    _selectedCategoryId = widget.task?.categoryId ?? widget.defaultCategoryId;
     _attachments = List.from(widget.task?.attachments ?? []);
   }
 
@@ -55,6 +61,11 @@ class _TaskFormState extends State<TaskForm> {
     _descriptionController.dispose();
     _urlController.dispose();
     super.dispose();
+  }
+
+  // Public method to trigger save from external callers (like AppBar save button)
+  void save() {
+    _saveTask();
   }
 
   @override
@@ -391,6 +402,12 @@ class _TaskFormState extends State<TaskForm> {
 
   void _saveTask() {
     if (!_formKey.currentState!.validate()) return;
+
+    // Automatically add any URL in the text field as an attachment
+    final urlText = _urlController.text.trim();
+    if (urlText.isNotEmpty) {
+      _addUrlAttachment();
+    }
 
     final task = Task(
       id: widget.task?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),

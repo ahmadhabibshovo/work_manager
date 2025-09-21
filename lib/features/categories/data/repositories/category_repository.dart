@@ -1,5 +1,4 @@
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
 import '../models/category.dart';
 
 abstract class CategoryRepository {
@@ -9,79 +8,60 @@ abstract class CategoryRepository {
   Future<Category> updateCategory(Category category);
   Future<void> deleteCategory(String id);
   Future<List<Category>> getCategoriesByType(CategoryType type);
+  Future<void> initialize();
 }
 
 class CategoryRepositoryImpl implements CategoryRepository {
-  static const String _categoriesKey = 'categories';
-  final SharedPreferences _prefs;
+  static const String _boxName = 'categories';
+  late Box<Category> _box;
 
-  CategoryRepositoryImpl(this._prefs);
+  @override
+  Future<void> initialize() async {
+    _box = await Hive.openBox<Category>(_boxName);
+
+    // Add default categories if box is empty
+    if (_box.isEmpty) {
+      final defaultCategories = _getDefaultCategories();
+      for (final category in defaultCategories) {
+        await _box.put(category.id, category);
+      }
+    }
+  }
 
   @override
   Future<List<Category>> getAllCategories() async {
-    final categoriesJson = _prefs.getStringList(_categoriesKey) ?? [];
-    final categories = categoriesJson
-        .map((json) => Category.fromJson(jsonDecode(json)))
-        .toList()
+    final categories = _box.values.toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
-
-    // Add default categories if none exist
-    if (categories.isEmpty) {
-      categories.addAll(_getDefaultCategories());
-      await _saveCategories(categories);
-    }
-
     return categories;
   }
 
   @override
   Future<Category?> getCategoryById(String id) async {
-    final categories = await getAllCategories();
-    return categories.where((category) => category.id == id).firstOrNull;
+    return _box.get(id);
   }
 
   @override
   Future<Category> createCategory(Category category) async {
-    final categories = await getAllCategories();
-    categories.add(category);
-
-    await _saveCategories(categories);
+    await _box.put(category.id, category);
     return category;
   }
 
   @override
   Future<Category> updateCategory(Category category) async {
-    final categories = await getAllCategories();
-    final index = categories.indexWhere((c) => c.id == category.id);
-
-    if (index == -1) {
-      throw Exception('Category not found');
-    }
-
     final updatedCategory = category.copyWith(updatedAt: DateTime.now());
-    categories[index] = updatedCategory;
-
-    await _saveCategories(categories);
+    await _box.put(category.id, updatedCategory);
     return updatedCategory;
   }
 
   @override
   Future<void> deleteCategory(String id) async {
-    final categories = await getAllCategories();
-    categories.removeWhere((category) => category.id == id);
-
-    await _saveCategories(categories);
+    await _box.delete(id);
   }
 
   @override
   Future<List<Category>> getCategoriesByType(CategoryType type) async {
-    final categories = await getAllCategories();
-    return categories.where((category) => category.type == type).toList();
-  }
-
-  Future<void> _saveCategories(List<Category> categories) async {
-    final categoriesJson = categories.map((c) => jsonEncode(c.toJson())).toList();
-    await _prefs.setStringList(_categoriesKey, categoriesJson);
+    final categories = _box.values.where((category) => category.type == type).toList();
+    return categories;
   }
 
   List<Category> _getDefaultCategories() {

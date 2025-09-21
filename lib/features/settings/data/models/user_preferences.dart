@@ -66,6 +66,7 @@ class UserPreferences {
   final bool enableVibration;
   final bool showCompletedTasks;
   final int defaultTaskPriority;
+  final String? defaultCategoryId;
   final bool autoDeleteCompletedTasks;
   final int autoDeleteAfterDays;
 
@@ -77,6 +78,7 @@ class UserPreferences {
     this.enableVibration = true,
     this.showCompletedTasks = true,
     this.defaultTaskPriority = 2, // Medium priority
+    this.defaultCategoryId,
     this.autoDeleteCompletedTasks = false,
     this.autoDeleteAfterDays = 30,
   });
@@ -89,6 +91,7 @@ class UserPreferences {
     bool? enableVibration,
     bool? showCompletedTasks,
     int? defaultTaskPriority,
+    String? defaultCategoryId,
     bool? autoDeleteCompletedTasks,
     int? autoDeleteAfterDays,
   }) {
@@ -100,6 +103,7 @@ class UserPreferences {
       enableVibration: enableVibration ?? this.enableVibration,
       showCompletedTasks: showCompletedTasks ?? this.showCompletedTasks,
       defaultTaskPriority: defaultTaskPriority ?? this.defaultTaskPriority,
+      defaultCategoryId: defaultCategoryId ?? this.defaultCategoryId,
       autoDeleteCompletedTasks: autoDeleteCompletedTasks ?? this.autoDeleteCompletedTasks,
       autoDeleteAfterDays: autoDeleteAfterDays ?? this.autoDeleteAfterDays,
     );
@@ -114,6 +118,7 @@ class UserPreferences {
       'enableVibration': enableVibration,
       'showCompletedTasks': showCompletedTasks,
       'defaultTaskPriority': defaultTaskPriority,
+      'defaultCategoryId': defaultCategoryId,
       'autoDeleteCompletedTasks': autoDeleteCompletedTasks,
       'autoDeleteAfterDays': autoDeleteAfterDays,
     };
@@ -134,6 +139,7 @@ class UserPreferences {
       enableVibration: json['enableVibration'] ?? true,
       showCompletedTasks: json['showCompletedTasks'] ?? true,
       defaultTaskPriority: json['defaultTaskPriority'] ?? 2,
+      defaultCategoryId: json['defaultCategoryId'],
       autoDeleteCompletedTasks: json['autoDeleteCompletedTasks'] ?? false,
       autoDeleteAfterDays: json['autoDeleteAfterDays'] ?? 30,
     );
@@ -156,6 +162,7 @@ class UserPreferences {
         other.enableVibration == enableVibration &&
         other.showCompletedTasks == showCompletedTasks &&
         other.defaultTaskPriority == defaultTaskPriority &&
+        other.defaultCategoryId == defaultCategoryId &&
         other.autoDeleteCompletedTasks == autoDeleteCompletedTasks &&
         other.autoDeleteAfterDays == autoDeleteAfterDays;
   }
@@ -169,6 +176,7 @@ class UserPreferences {
         enableVibration.hashCode ^
         showCompletedTasks.hashCode ^
         defaultTaskPriority.hashCode ^
+        defaultCategoryId.hashCode ^
         autoDeleteCompletedTasks.hashCode ^
         autoDeleteAfterDays.hashCode;
   }

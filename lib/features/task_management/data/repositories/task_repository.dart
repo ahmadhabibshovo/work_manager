@@ -1,5 +1,4 @@
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive/hive.dart';
 import '../models/task.dart';
 import '../models/priority.dart';
 
@@ -12,80 +11,63 @@ abstract class TaskRepository {
   Future<List<Task>> getTasksByPriority(Priority priority);
   Future<List<Task>> getCompletedTasks();
   Future<List<Task>> getPendingTasks();
+  Future<void> initialize();
 }
 
 class TaskRepositoryImpl implements TaskRepository {
-  static const String _tasksKey = 'tasks';
-  final SharedPreferences _prefs;
+  static const String _boxName = 'tasks';
+  late Box<Task> _box;
 
-  TaskRepositoryImpl(this._prefs);
+  @override
+  Future<void> initialize() async {
+    _box = await Hive.openBox<Task>(_boxName);
+  }
 
   @override
   Future<List<Task>> getAllTasks() async {
-    final tasksJson = _prefs.getStringList(_tasksKey) ?? [];
-    return tasksJson.map((json) => Task.fromJson(jsonDecode(json))).toList()
+    final tasks = _box.values.toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return tasks;
   }
 
   @override
   Future<Task?> getTaskById(String id) async {
-    final tasks = await getAllTasks();
-    return tasks.where((task) => task.id == id).firstOrNull;
+    return _box.get(id);
   }
 
   @override
   Future<Task> createTask(Task task) async {
-    final tasks = await getAllTasks();
-    tasks.add(task);
-
-    final tasksJson = tasks.map((t) => jsonEncode(t.toJson())).toList();
-    await _prefs.setStringList(_tasksKey, tasksJson);
-
+    await _box.put(task.id, task);
     return task;
   }
 
   @override
   Future<Task> updateTask(Task task) async {
-    final tasks = await getAllTasks();
-    final index = tasks.indexWhere((t) => t.id == task.id);
-
-    if (index == -1) {
-      throw Exception('Task not found');
-    }
-
     final updatedTask = task.copyWith(updatedAt: DateTime.now());
-    tasks[index] = updatedTask;
-
-    final tasksJson = tasks.map((t) => jsonEncode(t.toJson())).toList();
-    await _prefs.setStringList(_tasksKey, tasksJson);
-
+    await _box.put(task.id, updatedTask);
     return updatedTask;
   }
 
   @override
   Future<void> deleteTask(String id) async {
-    final tasks = await getAllTasks();
-    tasks.removeWhere((task) => task.id == id);
-
-    final tasksJson = tasks.map((t) => jsonEncode(t.toJson())).toList();
-    await _prefs.setStringList(_tasksKey, tasksJson);
+    await _box.delete(id);
   }
 
   @override
   Future<List<Task>> getTasksByPriority(Priority priority) async {
-    final tasks = await getAllTasks();
-    return tasks.where((task) => task.priority == priority).toList();
+    final tasks = _box.values.where((task) => task.priority == priority).toList();
+    return tasks;
   }
 
   @override
   Future<List<Task>> getCompletedTasks() async {
-    final tasks = await getAllTasks();
-    return tasks.where((task) => task.isCompleted).toList();
+    final tasks = _box.values.where((task) => task.isCompleted).toList();
+    return tasks;
   }
 
   @override
   Future<List<Task>> getPendingTasks() async {
-    final tasks = await getAllTasks();
-    return tasks.where((task) => !task.isCompleted).toList();
+    final tasks = _box.values.where((task) => !task.isCompleted).toList();
+    return tasks;
   }
 }
